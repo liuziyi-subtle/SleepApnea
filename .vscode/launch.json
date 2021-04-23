@@ -19,7 +19,7 @@
         "--manual_infos_path",
         "/Users/liuziyi/Documents/Lifesense/Data/SleepApnea/Raw/manual_infos.csv"
       ],
-      "justMyCode": false
+      "justMyCode": false,
     },
     {
       "name": "Python: test.py",
