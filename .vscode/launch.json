@@ -20,6 +20,14 @@
         "/Users/liuziyi/Documents/Lifesense/Data/SleepApnea/Raw/manual_infos.csv"
       ],
       "justMyCode": false
+    },
+    {
+      "name": "Python: test.py",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": false
     }
   ]
 }

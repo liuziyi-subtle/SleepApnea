@@ -17,6 +17,7 @@
 //   @return        Confidence indicating whether the breath rate can be used.
 //  */
 #include <stdint.h>
+#include <stdio.h>
 // #include "arm_spline_interp_f32.h"
 #define MAX_INTERP_LEN (50)
 
@@ -45,6 +46,7 @@ uint8_t CalcBreathRate(float *rrs, uint16_t rrs_len, uint16_t fs) {
   float interval = (float)rrs_len / (rrs_len - 1);
   for (i = 1; i < rrs_len; ++i) {
     x[i] = i * interval;
+    printf("%f, ", x[i]);
   }
 
   // arm_spline_instance_f32 S;
