@@ -1,15 +1,25 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: 当前文件",
+      "name": "Python: analyze_breath.py",
       "type": "python",
       "request": "launch",
       "program": "${file}",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "args": [
+        "--raw_dir",
+        "/Users/liuziyi/Documents/Lifesense/Data/SleepApnea/Raw/NLM",
+        "--golden_dir",
+        "/Users/liuziyi/Documents/Lifesense/Data/SleepApnea/Raw/Golden",
+        "--sample_rate",
+        "25",
+        "--detect_duration",
+        "32",
+        "--manual_infos_path",
+        "/Users/liuziyi/Documents/Lifesense/Data/SleepApnea/Raw/manual_infos.csv"
+      ],
+      "justMyCode": false
     }
   ]
 }
