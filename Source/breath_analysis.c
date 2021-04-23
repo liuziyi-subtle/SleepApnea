@@ -18,7 +18,7 @@
 //  */
 #include <stdint.h>
 #include <stdio.h>
-// #include "arm_spline_interp_f32.h"
+#include "arm_spline_interp_f32.h"
 #define MAX_INTERP_LEN (50)
 
 
@@ -42,16 +42,16 @@ uint8_t CalcBreathRate(float *rrs, uint16_t rrs_len, uint16_t fs) {
   float *y_out = x_out + 32 * fs;
 
   /* Resample rrlist to 1000Hz. */
-  x[rrs_len - 1] = rrs_len;
+  x[0] = .0f;
+  x[rrs_len - 1] = (float)rrs_len;
   float interval = (float)rrs_len / (rrs_len - 1);
   for (i = 1; i < rrs_len; ++i) {
     x[i] = i * interval;
-    printf("%f, ", x[i]);
   }
 
-  // arm_spline_instance_f32 S;
-  // arm_spline_init_f32(&S, ARM_SPLINE_PARABOLIC_RUNOUT, x, rrs, rrs_len, coef, buf);
-  // arm_spline_f32(&S, x_out, y_out, 2);
+  arm_spline_instance_f32 S;
+  arm_spline_init_f32(&S, ARM_SPLINE_PARABOLIC_RUNOUT, x, rrs, rrs_len, coef, buf);
+  arm_spline_f32(&S, x_out, y_out, 2);
 
   // /* Filter breath. */
   // float *y_out_f = k_mem_pool + 5120;
