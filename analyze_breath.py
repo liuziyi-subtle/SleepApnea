@@ -24,6 +24,14 @@ def find_breath_peaks(sig):
     return peaks, filtered
 
 
+"""
+Usage:
+python3 analyze_breath.py --raw_dir=/Users/liuziyi/Documents/Lifesense/Data/SleepApnea/Raw/NLM \
+                          --golden_dir=/Users/liuziyi/Documents/Lifesense/Data/SleepApnea/Raw/Golden \
+                          --sample_rate=25 \
+                          --detect_duration=32 \
+                          --manual_infos_path=/Users/liuziyi/Documents/Lifesense/Data/SleepApnea/Raw/manual_infos.csv
+"""
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
@@ -80,15 +88,15 @@ if __name__ == "__main__":
             br = args.sample_rate / peaks_mean
             breathingrates_golden.append(br)
 
-        fig, axes = plt.subplots(3, 1, figsize=(15, 8), sharex=True)
-        axes[0].plot(ppg_f)
-        axes[0].plot(ppg_peaks, ppg_f[ppg_peaks], "bo")
-        axes[1].plot(golden)
-        axes[1].plot(peaks_golden, golden[peaks_golden], "ro")
-        axes[2].plot(range(0, len(ppg_f), window_length), breathingrates, "ro")
-        axes[2].plot(range(0, len(ppg_f), window_length),
-                     breathingrates_golden, "b*")
-        # axes[2].set_ylim(0, 0.5)
-        plt.show()
+        # fig, axes = plt.subplots(3, 1, figsize=(15, 8), sharex=True)
+        # axes[0].plot(ppg_f)
+        # axes[0].plot(ppg_peaks, ppg_f[ppg_peaks], "bo")
+        # axes[1].plot(golden)
+        # axes[1].plot(peaks_golden, golden[peaks_golden], "ro")
+        # axes[2].plot(range(0, len(ppg_f), window_length), breathingrates, "ro")
+        # axes[2].plot(range(0, len(ppg_f), window_length),
+        #              breathingrates_golden, "b*")
+        # # axes[2].set_ylim(0, 0.5)
+        # plt.show()
 
         a = input("-->")
