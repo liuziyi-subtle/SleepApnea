@@ -14,7 +14,7 @@
   @param[in]     pBitRevTab  points to bit reversal table
   @return        none
 */
-void nonwear_arm_bitreversal_64(uint64_t *pSrc, const uint16_t bitRevLen,
+void sleep_arm_bitreversal_64(uint64_t *pSrc, const uint16_t bitRevLen,
                                 const uint16_t *pBitRevTab) {
   uint64_t a, b, i, tmp;
 

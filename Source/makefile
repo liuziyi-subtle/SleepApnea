@@ -16,7 +16,7 @@ export DFLAGS = -DDEBUG=1
 export LDLIBS = -lm
 
 # OBJS := $(patsubst %.c, %.o, $(wildcard *.c))
-OBJS = breath_analysis.o
+OBJS = breath_analysis.o arm_spline_interp_init_f32.o arm_spline_interp_f32.o fir_filter.o biquad_filter.o
 
 libsleepbreath.a: $(OBJS)
 	ar -r libsleepbreath.a $(OBJS)
@@ -24,7 +24,20 @@ libsleepbreath.a: $(OBJS)
 # %.o: %.c
 # 	$(CC) $(CFLAGS) -c $< -o $@ $(DFLAGS)
 breath_analysis.o:	breath_analysis.c
-	$(CC) $(CFLAGS) -c breath_analysis.c -o breath_analysis.o
+	$(CC) $(CFLAGS) -c breath_analysis.c -o breath_analysis.o $(DFLAGS) -I/Users/liuziyi/Documents/GitLab/SleepApnea/Debug
+
+arm_spline_interp_init_f32.o:	arm_spline_interp_init_f32.c
+	$(CC) $(CFLAGS) -c arm_spline_interp_init_f32.c -o arm_spline_interp_init_f32.o $(DFLAGS) -I/Users/liuziyi/Documents/GitLab/SleepApnea/Debug
+
+arm_spline_interp_f32.o:	arm_spline_interp_f32.c
+	$(CC) $(CFLAGS) -c arm_spline_interp_f32.c -o arm_spline_interp_f32.o $(DFLAGS) -I/Users/liuziyi/Documents/GitLab/SleepApnea/Debug
+
+fir_filter.o:	fir_filter.c
+	$(CC) $(CFLAGS) -c fir_filter.c -o fir_filter.o $(DFLAGS) -I/Users/liuziyi/Documents/GitLab/SleepApnea/Debug
+
+biquad_filter.o: biquad_filter.c
+	$(CC) $(CFLAGS) -c biquad_filter.c -o biquad_filter.o $(DFLAGS) -I/Users/liuziyi/Documents/GitLab/SleepApnea/Debug
+
 
 clean:
 	rm -f $(CURDIR)/*.o $(CURDIR)/*.a

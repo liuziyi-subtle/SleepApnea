@@ -1,19 +1,19 @@
-#include "nonwear_arm_rfft_fast_f64.h"
+#include "ls_sleep_apnea_arm_rfft_fast_f64.h"
 
-#define NONWEAR_ARMBITREVINDEXTABLEF64_32_TABLE_LENGTH ((uint16_t)24)
+#define sleep_apnea_ARMBITREVINDEXTABLEF64_32_TABLE_LENGTH ((uint16_t)24)
 // const uint16_t
 //     armBitRevIndexTableF64_32[ARMBITREVINDEXTABLEF64_32_TABLE_LENGTH];
 
 // const uint64_t twiddleCoefF64_32[64];
 // const uint64_t twiddleCoefF64_rfft_64[64];
 
-const uint16_t nonwear_armBitRevIndexTableF64_32
-    [NONWEAR_ARMBITREVINDEXTABLEF64_32_TABLE_LENGTH] = {
+const uint16_t sleep_apnea_armBitRevIndexTableF64_32
+    [sleep_apnea_ARMBITREVINDEXTABLEF64_32_TABLE_LENGTH] = {
         /* 4x2, size 24 */
         8,  128, 16, 64,  24,  192, 40,  160, 48,  96,  56,  224,
         72, 144, 88, 208, 104, 176, 120, 240, 152, 200, 184, 232};
 
-const uint64_t nonwear_twiddleCoefF64_32[64] = {
+const uint64_t sleep_apnea_twiddleCoefF64_32[64] = {
     0x3ff0000000000000, 0x0000000000000000,  //       1,       0'
     0x3fef6297cff75cb0, 0x3fc8f8b83c69a60a,  // 0.98079, 0.19509'
     0x3fed906bcf328d46, 0x3fd87de2a6aea963,  // 0.92388, 0.38268'
@@ -48,7 +48,7 @@ const uint64_t nonwear_twiddleCoefF64_32[64] = {
     0x3fef6297cff75cb0, 0xbfc8f8b83c69a60a,  // 0.98079,-0.19509'
 };
 
-const uint64_t nonwear_twiddleCoefF64_rfft_64[64] = {
+const uint64_t sleep_apnea_twiddleCoefF64_rfft_64[64] = {
     0x0000000000000000, 0x3ff0000000000000,  //       0,        1'
     0x3fb917a6bc29b42c, 0x3fefd88da3d12526,  // 0.098017,  0.99518'
     0x3fc8f8b83c69a60a, 0x3fef6297cff75cb0,  // 0.19509,  0.98079'
@@ -83,20 +83,20 @@ const uint64_t nonwear_twiddleCoefF64_rfft_64[64] = {
     0x3fb917a6bc29b42c, 0xbfefd88da3d12526,  // 0.098017, -0.99518'
 };
 
-nonwear_arm_status nonwear_arm_rfft_64_fast_init_f64(
-    nonwear_arm_rfft_fast_instance_f64 *S) {
-  nonwear_arm_cfft_instance_f64 *Sint;
+sleep_apnea_arm_status sleep_apnea_arm_rfft_64_fast_init_f64(
+    sleep_apnea_arm_rfft_fast_instance_f64 *S) {
+  sleep_apnea_arm_cfft_instance_f64 *Sint;
 
-  if (!S) return NONWEAR_ARM_MATH_ARGUMENT_ERROR;
+  if (!S) return sleep_apnea_ARM_MATH_ARGUMENT_ERROR;
 
   Sint = &(S->Sint);
   Sint->fftLen = 32U;
   S->fftLenRFFT = 64U;
 
-  Sint->bitRevLength = NONWEAR_ARMBITREVINDEXTABLEF64_32_TABLE_LENGTH;
-  Sint->pBitRevTable = (uint16_t *)nonwear_armBitRevIndexTableF64_32;
-  Sint->pTwiddle = (float64_t *)nonwear_twiddleCoefF64_32;
-  S->pTwiddleRFFT = (float64_t *)nonwear_twiddleCoefF64_rfft_64;
+  Sint->bitRevLength = sleep_apnea_ARMBITREVINDEXTABLEF64_32_TABLE_LENGTH;
+  Sint->pBitRevTable = (uint16_t *)sleep_apnea_armBitRevIndexTableF64_32;
+  Sint->pTwiddle = (float64_t *)sleep_apnea_twiddleCoefF64_32;
+  S->pTwiddleRFFT = (float64_t *)sleep_apnea_twiddleCoefF64_rfft_64;
 
-  return NONWEAR_ARM_MATH_SUCCESS;
+  return sleep_apnea_ARM_MATH_SUCCESS;
 }

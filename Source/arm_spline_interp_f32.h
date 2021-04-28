@@ -1,4 +1,7 @@
  
+  typedef float float32_t;
+  #include <stdint.h>
+  
   /**
    * @brief Struct for specifying cubic spline type
    */

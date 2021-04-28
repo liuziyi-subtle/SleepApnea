@@ -1,12 +1,12 @@
 // #include "arm_common_tables.h"
 // #include "arm_math.h"
-#include "nonwear_arm_rfft_fast_f64.h"
+#include "ls_sleep_apnea_arm_rfft_fast_f64.h"
 
-extern void nonwear_arm_radix4_butterfly_f64(float64_t* pSrc, uint16_t fftLen,
+extern void sleep_apnea_arm_radix4_butterfly_f64(float64_t* pSrc, uint16_t fftLen,
                                              const float64_t* pCoef,
                                              uint16_t twidCoefModifier);
 
-extern void nonwear_arm_bitreversal_64(uint64_t* pSrc, const uint16_t bitRevLen,
+extern void sleep_apnea_arm_bitreversal_64(uint64_t* pSrc, const uint16_t bitRevLen,
                                        const uint16_t* pBitRevTable);
 
 /**
@@ -29,7 +29,7 @@ extern void nonwear_arm_bitreversal_64(uint64_t* pSrc, const uint16_t bitRevLen,
  * @return none.
  */
 
-void nonwear_arm_radix4_butterfly_f64(float64_t* pSrc, uint16_t fftLen,
+void sleep_apnea_arm_radix4_butterfly_f64(float64_t* pSrc, uint16_t fftLen,
                                       const float64_t* pCoef,
                                       uint16_t twidCoefModifier) {
   float64_t co1, co2, co3, si1, si2, si3;
@@ -159,7 +159,7 @@ void nonwear_arm_radix4_butterfly_f64(float64_t* pSrc, uint16_t fftLen,
  * @return none.
  */
 
-void nonwear_arm_cfft_radix4by2_f64(float64_t* pSrc, uint32_t fftLen,
+void sleep_apnea_arm_cfft_radix4by2_f64(float64_t* pSrc, uint32_t fftLen,
                                     const float64_t* pCoef) {
   uint32_t i, l;
   uint32_t n2, ia;
@@ -195,9 +195,9 @@ void nonwear_arm_cfft_radix4by2_f64(float64_t* pSrc, uint32_t fftLen,
   }
 
   // first col
-  nonwear_arm_radix4_butterfly_f64(pSrc, n2, (float64_t*)pCoef, 2U);
+  sleep_apnea_arm_radix4_butterfly_f64(pSrc, n2, (float64_t*)pCoef, 2U);
   // second col
-  nonwear_arm_radix4_butterfly_f64(pSrc + fftLen, n2, (float64_t*)pCoef, 2U);
+  sleep_apnea_arm_radix4_butterfly_f64(pSrc + fftLen, n2, (float64_t*)pCoef, 2U);
 }
 
 /**
@@ -222,7 +222,7 @@ void nonwear_arm_cfft_radix4by2_f64(float64_t* pSrc, uint32_t fftLen,
   @return        none
  */
 
-void nonwear_arm_cfft_f64(const nonwear_arm_cfft_instance_f64* S, float64_t* p1,
+void sleep_apnea_arm_cfft_f64(const sleep_apnea_arm_cfft_instance_f64* S, float64_t* p1,
                           uint8_t ifftFlag, uint8_t bitReverseFlag) {
   uint32_t L = S->fftLen, l;
   float64_t invL, *pSrc;
@@ -242,20 +242,20 @@ void nonwear_arm_cfft_f64(const nonwear_arm_cfft_instance_f64* S, float64_t* p1,
     case 256:
     case 1024:
     case 4096:
-      nonwear_arm_radix4_butterfly_f64(p1, L, (float64_t*)S->pTwiddle, 1U);
+      sleep_apnea_arm_radix4_butterfly_f64(p1, L, (float64_t*)S->pTwiddle, 1U);
       break;
 
     case 32:
     case 128:
     case 512:
     case 2048:
-      nonwear_arm_cfft_radix4by2_f64(p1, L,
+      sleep_apnea_arm_cfft_radix4by2_f64(p1, L,
                                      (float64_t*)S->pTwiddle);  // 可以去掉
       break;
   }
 
   if (bitReverseFlag)
-    nonwear_arm_bitreversal_64((uint64_t*)p1, S->bitRevLength, S->pBitRevTable);
+    sleep_apnea_arm_bitreversal_64((uint64_t*)p1, S->bitRevLength, S->pBitRevTable);
 
   if (ifftFlag == 1U) {
     invL = 1.0 / (float64_t)L;

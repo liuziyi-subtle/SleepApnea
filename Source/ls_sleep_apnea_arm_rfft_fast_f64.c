@@ -1,11 +1,11 @@
 // #include "arm_math.h"
-#include "nonwear_arm_rfft_fast_f64.h"
+#include "ls_sleep_apnea_arm_rfft_fast_f64.h"
 
-extern void nonwear_arm_cfft_f64(const nonwear_arm_cfft_instance_f64 *S,
+extern void sleep_apnea_arm_cfft_f64(const sleep_apnea_arm_cfft_instance_f64 *S,
                                  float64_t *p1, uint8_t ifftFlag,
                                  uint8_t bitReverseFlag);
 
-void nonwear_stage_rfft_f64(const nonwear_arm_rfft_fast_instance_f64 *S,
+void sleep_apnea_stage_rfft_f64(const sleep_apnea_arm_rfft_fast_instance_f64 *S,
                             float64_t *p, float64_t *pOut) {
   uint32_t k;         /* Loop Counter */
   float64_t twR, twI; /* RFFT Twiddle coefficients */
@@ -88,7 +88,7 @@ void nonwear_stage_rfft_f64(const nonwear_arm_rfft_fast_instance_f64 *S,
 }
 
 /* Prepares data for inverse cfft */
-void nonwear_merge_rfft_f64(const nonwear_arm_rfft_fast_instance_f64 *S,
+void sleep_apnea_merge_rfft_f64(const sleep_apnea_arm_rfft_fast_instance_f64 *S,
                             float64_t *p, float64_t *pOut) {
   uint32_t k;         /* Loop Counter */
   float64_t twR, twI; /* RFFT Twiddle coefficients */
@@ -156,7 +156,7 @@ void nonwear_merge_rfft_f64(const nonwear_arm_rfft_fast_instance_f64 *S,
 /**
   @brief         Processing function for the Double Precision floating-point
   real FFT.
-  @param[in]     S         points to an nonwear_arm_rfft_fast_instance_f64
+  @param[in]     S         points to an sleep_apnea_arm_rfft_fast_instance_f64
   structure
   @param[in]     p         points to input buffer (Source buffer is modified by
   this function.)
@@ -167,24 +167,24 @@ void nonwear_merge_rfft_f64(const nonwear_arm_rfft_fast_instance_f64 *S,
   @return        none
 */
 
-void nonwear_arm_rfft_fast_f64(nonwear_arm_rfft_fast_instance_f64 *S,
+void sleep_apnea_arm_rfft_fast_f64(sleep_apnea_arm_rfft_fast_instance_f64 *S,
                                float64_t *p, float64_t *pOut,
                                uint8_t ifftFlag) {
-  nonwear_arm_cfft_instance_f64 *Sint = &(S->Sint);
+  sleep_apnea_arm_cfft_instance_f64 *Sint = &(S->Sint);
   Sint->fftLen = S->fftLenRFFT / 2;
 
   /* Calculation of Real FFT */
   if (ifftFlag) {
     /*  Real FFT compression */
-    nonwear_merge_rfft_f64(S, p, pOut);
+    sleep_apnea_merge_rfft_f64(S, p, pOut);
 
     /* Complex radix-4 IFFT process */
-    nonwear_arm_cfft_f64(Sint, pOut, ifftFlag, 1);
+    sleep_apnea_arm_cfft_f64(Sint, pOut, ifftFlag, 1);
   } else {
     /* Calculation of RFFT of input */
-    nonwear_arm_cfft_f64(Sint, p, ifftFlag, 1);
+    sleep_apnea_arm_cfft_f64(Sint, p, ifftFlag, 1);
 
     /*  Real FFT extraction */
-    nonwear_stage_rfft_f64(S, p, pOut);
+    sleep_apnea_stage_rfft_f64(S, p, pOut);
   }
 }

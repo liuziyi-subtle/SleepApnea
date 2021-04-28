@@ -26,7 +26,8 @@
  * limitations under the License.
  */
 
-#include "dsp/interpolation_functions.h"
+// #include "dsp/interpolation_functions.h"
+#include "arm_spline_interp_f32.h"
 
 /**
   @ingroup groupInterpolation
