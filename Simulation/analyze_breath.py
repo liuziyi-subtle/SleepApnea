@@ -56,47 +56,58 @@ if __name__ == "__main__":
         end = int((series["end"] - intersect_end) * series["fs"])
         ppg = utils.read_nlmfile(record_path, 1, np.uint16, 1, start, end)
 
-        # Calculate breath parameters.
-        ppg_peaks, ppg_f = find_breath_peaks(ppg)
-        breathingrates = []
-        ppg_peaks = []
-        for i in range(0, len(ppg_f), window_length):
-            segment = ppg_f[i:i + window_length]
-            measurements = hp.process(segment, 25, clean_rr=True)
-            br = measurements[-1]["breathingrate"]
-            breathingrates.append(br)
-            pl = measurements[0]["peaklist"]
-            pl = [p + i for p in pl]
-            ppg_peaks.extend(pl)
+        ppg_c = c2py.int32_t_array(len(ppg))
+        for i in range(len(ppg)):
+            ppg_c[i] = float(ppg[i])
+        c2py.BreathAnalysisInit()
+        c2py.BreathAnalysis(ppg_c, len(ppg))
+        PLOT = c2py.GetPLOT()
+        peak_buf = [PLOT.getitem_peak_buf(i) for i in range(PLOT.peak_buf_len)]
+        peak_index_buf = [PLOT.getitem_peak_index_buf(
+            i) for i in range(PLOT.peak_index_buf_len)]
+        ppg_buf = [PLOT.getitem_ppg_buf(i) for i in range(PLOT.ppg_buf_len)]
 
-        # Read Philips format files.
-        record_path = os.path.join(
-            args.golden_dir, series["golden_dir"] + "/TFlow.csv")
-        start = int((intersect_start - series["golden_start"])
-                    * series["golden_fs"])
-        end = int((series["golden_end"] - intersect_end) * series["golden_fs"])
-        golden = utils.read_golden_philips(record_path, np.int16, start, end)
+# # Calculate breath parameters.
+# ppg_peaks, ppg_f = find_breath_peaks(ppg)
+# breathingrates = []
+# ppg_peaks = []
+# for i in range(0, len(ppg_f), window_length):
+#     segment = ppg_f[i:i + window_length]
+#     measurements = hp.process(segment, 25, clean_rr=True)
+#     br = measurements[-1]["breathingrate"]
+#     breathingrates.append(br)
+#     pl = measurements[0]["peaklist"]
+#     pl = [p + i for p in pl]
+#     ppg_peaks.extend(pl)
 
-        # Calculate golden breath.
-        peaks_golden = find_peaks(golden, distance=50, height=1)[0]
-        print("golden: ", golden)
-        breathingrates_golden = []
-        for i in range(0, len(ppg_f), window_length):
-            peaks_segment = peaks_golden[(peaks_golden > i) & (
-                peaks_golden < i + window_length)]
-            peaks_mean = np.mean(peaks_segment[1:] - peaks_segment[:-1])
-            br = args.sample_rate / peaks_mean
-            breathingrates_golden.append(br)
+# # Read Philips format files.
+# record_path = os.path.join(
+#     args.golden_dir, series["golden_dir"] + "/TFlow.csv")
+# start = int((intersect_start - series["golden_start"])
+#             * series["golden_fs"])
+# end = int((series["golden_end"] - intersect_end) * series["golden_fs"])
+# golden = utils.read_golden_philips(record_path, np.int16, start, end)
 
-        # fig, axes = plt.subplots(3, 1, figsize=(15, 8), sharex=True)
-        # axes[0].plot(ppg_f)
-        # axes[0].plot(ppg_peaks, ppg_f[ppg_peaks], "bo")
+# # Calculate golden breath.
+# peaks_golden = find_peaks(golden, distance=50, height=1)[0]
+# print("golden: ", golden)
+# breathingrates_golden = []
+# for i in range(0, len(ppg_f), window_length):
+#     peaks_segment = peaks_golden[(peaks_golden > i) & (
+#         peaks_golden < i + window_length)]
+#     peaks_mean = np.mean(peaks_segment[1:] - peaks_segment[:-1])
+#     br = args.sample_rate / peaks_mean
+#     breathingrates_golden.append(br)
+
+        fig, axes = plt.subplots(1, 1, figsize=(15, 8), sharex=True)
+        axes[0].plot(ppg_buf)
+        axes[0].plot(peak_index_buf, peak_buf, "ro")
         # axes[1].plot(golden)
         # axes[1].plot(peaks_golden, golden[peaks_golden], "ro")
         # axes[2].plot(range(0, len(ppg_f), window_length), breathingrates, "ro")
         # axes[2].plot(range(0, len(ppg_f), window_length),
         #              breathingrates_golden, "b*")
-        # # axes[2].set_ylim(0, 0.5)
-        # plt.show()
+        # axes[2].set_ylim(0, 0.5)
+        plt.show()
 
-        a = input("-->")
+a = input("-->")

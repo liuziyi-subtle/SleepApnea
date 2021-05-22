@@ -25,7 +25,7 @@ export DFLAGS = -DDEBUG=1
 ETOBJS = c2py_wrap.o debug.o
 
 _c2py.so: $(ETOBJS)
-	$(CC) -bundle `python3-config --ldflags` -lpython3.9 -lm $(ETOBJS) -L$(SOURCEDIR) -lsleepbreath -o _c2py.so
+	$(CC) -bundle `python3-config --ldflags` -lpython3.9 -lm $(ETOBJS) -L$(SOURCEDIR) -lbreath -o _c2py.so
 	# ld -shared $(PY_LIB_DIR) $(PY_LIB) $(ETOBJS) -lm -L/Users/liuziyi/Documents/GitHub/StepCount/Source -lstep -lpython -o steppy.so
 
 c2py_wrap.o: c2py_wrap.c

@@ -4,6 +4,16 @@
     "concepts": "cpp",
     "type_traits": "cpp",
     "new": "cpp",
-    "arm_spline_interp_f32.h": "c"
+    "arm_spline_interp_f32.h": "c",
+    "*.tcc": "c",
+    "breath_fft.h": "c",
+    "optional": "c",
+    "istream": "c",
+    "ostream": "c",
+    "system_error": "c",
+    "array": "c",
+    "functional": "c",
+    "tuple": "c",
+    "utility": "c"
   }
 }
