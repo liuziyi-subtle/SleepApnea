@@ -91,18 +91,31 @@ if __name__ == "__main__":
         c2py.BreathAnalysis(ppg_c, len(ppg))
         debug_info = _get_c_debug_info()
 
-        peaks = find_peaks(debug_info["ppg_f"], height=None, threshold=None, distance=6,
-                           prominence=None, width=6, wlen=None, rel_height=0.5, plateau_size=None)
-        peaks = peaks[0].astype(np.int32)
+        peaks = np.array([])
+        for i in range(0, len(debug_info["ppg_f"]), 800):
+            segment_peaks = find_peaks(debug_info["ppg_f"][i:i+800], height=None, threshold=None, distance=6,
+                                       prominence=None, width=6, wlen=None, rel_height=0.5, plateau_size=None)
+            segment_peaks = segment_peaks[0].astype(np.int32)
+            peaks = np.r_[peaks, segment_peaks + i]
+        # peaks = find_peaks(debug_info["ppg_f"], height=None, threshold=None, distance=6,
+        #                    prominence=None, width=None, wlen=None, rel_height=0.5, plateau_size=None)[0].astype(np.int32)
+        peaks = peaks[peaks <= debug_info["peak_indices"][-1]].astype(np.int32)
+        print(peaks)
+
+        print(len(peaks), len(debug_info["peak_indices"]))
+        for i in range(len(peaks)):
+            if peaks[i] != debug_info["peak_indices"][i]:
+                print(i, peaks[i])
+                break
 
         fig, axes = plt.subplots(4, 1, figsize=(12, 7), sharex=False)
         axes[0].plot(debug_info["ppg"])
         axes[1].plot(debug_info["ppg_f"])
         axes[1].plot(debug_info["peak_indices"], debug_info["peaks"], "ro")
         axes[1].plot(peaks, [debug_info["ppg_f"][p] for p in peaks], "b*")
-        axes[2].plot(debug_info["y_interp_f"])
-        Pxx, freqs, bins, im = axes[3].specgram(
-            debug_info["y_interp_f"], NFFT=600, Fs=25, noverlap=0)
+        # axes[2].plot(debug_info["y_interp_f"])
+        # Pxx, freqs, bins, im = axes[3].specgram(
+        #     debug_info["y_interp_f"], NFFT=600, Fs=25, noverlap=0)
         plt.show()
 
         a = input("-->")

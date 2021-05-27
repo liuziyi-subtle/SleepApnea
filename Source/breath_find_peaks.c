@@ -33,6 +33,10 @@ int CmpIndex(const void *a, const void *b){
 
 int32_t SelectByPeakDistance(float *peaks, int32_t *peak_indices, int32_t peaks_len, int32_t distance, int32_t *left_bases, int32_t *right_bases)
 {
+  if (peaks_len >= 150)
+  {
+    printf("peaks_len: %d\n", peaks_len);
+  }
   int32_t i;
   for (i = 0; i < peaks_len; ++i)
   {
@@ -152,7 +156,7 @@ int32_t SelectByPeakProminence(float *peaks, int32_t peaks_len, int32_t *peak_in
 
 float FindPeak(float datum, int32_t *left_base, int32_t *right_base, uint8_t init)
 {
-	static float max, last_datum;
+	static float max, min, last_datum;
   static int32_t since_max, to_max;
 	
   float peak = .0f;
@@ -160,7 +164,7 @@ float FindPeak(float datum, int32_t *left_base, int32_t *right_base, uint8_t ini
 	if (init)
   {
     max = FLT_MIN;
-    // min = __FLT_MAX__;
+    min = __FLT_MAX__;
     last_datum = FLT_MIN;
     since_max = 0;
     // right_points = 0;
@@ -175,14 +179,17 @@ float FindPeak(float datum, int32_t *left_base, int32_t *right_base, uint8_t ini
     /* 此时新的上升开始，返回最近的一次上升+下降. */
     if ((since_max > 0) && (to_max > 0))
     {
-      peak = max;
-      *left_base = to_max;
-      *right_base = since_max;
+      if ((since_max > 3) && (max - min > 100))
+      {
+        peak = max;
+        *left_base = to_max;
+        *right_base = since_max;
+      }
+
       max = last_datum;
-      // min = __FLT_MAX__;
+      min = last_datum;
       to_max = 0;
       since_max = 0;
-      // printf("peak: %f, max: %f\n", peak, max);
     }
 
     if (datum > max)
@@ -198,9 +205,8 @@ float FindPeak(float datum, int32_t *left_base, int32_t *right_base, uint8_t ini
     // since_max = 0;
     // if (datum < min)
     // {
-    // min = datum;
+    min = datum;
     since_max++;
-      // printf("datum < last_datum: datum = %f, last_datum = %f, min = %f\n", datum, last_datum, min);
     // }
   }
   // else

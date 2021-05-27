@@ -22,7 +22,7 @@
 #define BREATH_CALL_DURATION      (32 * FS)
 #define BREATH_RATE_NONE          (-1)
 #define BREATH_SCORE_NONE         (-1)
-#define BREATH_MAX_PEAKS_LEN      (128)     /*<< 32 * (240BPM / 60) */
+#define BREATH_MAX_PEAKS_LEN      (256)     /*<< 32 * (240BPM / 60) */
 
 static float32_t _mem_pool[1024];  // 4096 Bytes
 static float64_t _mem_pool_f64[1024];  // 8192 Bytes
@@ -59,7 +59,7 @@ static float32_t _ppg_buf[BREATH_PPG_BUF_LEN];  // 100 Bytes.
 static uint32_t _ppg_nfill;
 static uint32_t _ppg_counter;
 
-static uint32_t _num_peaks;
+// static uint32_t _num_peaks;
 static float32_t _rr_buf[BREATH_MAX_RRS_LEN];  // 512 Bytes
 static uint32_t _rr_buf_len;
 static uint32_t _total_rr_len;
@@ -76,6 +76,14 @@ static uint32_t _last_ppg_counter;
 static int32_t _left_bases[BREATH_MAX_PEAKS_LEN];  // 512 Bytes
 static int32_t _right_bases[BREATH_MAX_PEAKS_LEN];  // 512 Bytes
 
+typedef struct _value2index_temp
+{
+  float32_t value;
+  int32_t index;
+} value2index_temp;
+
+static value2index_temp v2i_t[256];
+
 
 static uint8_t _CalcBreathRate(float32_t *rrs, uint32_t rrs_len, uint16_t fs)
 {
@@ -91,7 +99,7 @@ static uint8_t _CalcBreathRate(float32_t *rrs, uint32_t rrs_len, uint16_t fs)
    * Allocate mem from _mem_pool. TODO: Replace this section with an alloc func. 
    */
   float32_t *x = _mem_pool;
-  uint32_t x_len = rrs_len;
+  uint32_t x_len = rrs_len;  /*<< max = 128. */
 
   float32_t *coef = x + x_len;
   uint32_t coef_len = 3 * (rrs_len - 1);  /*<< b, c, d has length (n - 1). */
@@ -197,15 +205,16 @@ void _DetectPeaks(float32_t ppg)
 
   for (i = 0; i < BREATH_PPG_BUF_LEN; i++)
   {
+    // printf("_ppg_buf[i]: %f, _ppg_counter: %u\n", _ppg_buf[i], _ppg_counter);
     int32_t left_base = 0, right_base = 0;
     float32_t peak = FindPeak(_ppg_buf[i], &left_base, &right_base, 0u);
     if (fabs(peak) > .0f)
     {
       int32_t peak_index = _ppg_counter - BREATH_PPG_BUF_LEN + i - right_base - 1;
-      
+
       if (_peaks_len == BREATH_MAX_PEAKS_LEN)
       {
-        for (j = 1; j < _peaks_len; ++j)
+        for (j = 0; j < _peaks_len - 1; ++j)
         {
           _peaks[j] = _peaks[j + 1];
           _peak_indices[j] = _peak_indices[j + 1];
@@ -257,14 +266,14 @@ void BreathAnalysisInit()
   //   _candpv.pv[i] = MakeBPV(0, 0, 0);
   // }
 
-  for (int i = 0; i < BREATH_MAX_PV_LEN / 2; i++)
+  for (int i = 0; i < BREATH_MAX_RRS_LEN; i++)
   {
     // _pv_buf[i] = .0f;
     // _peak_buf[i] = .0f;
     // _peak_index_buf[i] = 0;
     _rr_buf[i] = .0f;
   }
-  _num_peaks = 0;
+  // _num_peaks = 0;
   _rr_buf_len = 0;
   _total_rr_len = 0;
   _last_total_rr_len = 0;
@@ -279,7 +288,29 @@ void BreathAnalysisInit()
   _peaks_len = 0;
   _last_ppg_counter = 0;
 
+#if DEBUG
+  DebugInit();
+#endif
+
   return;
+}
+
+
+int32_t CalcRR(float32_t *peaks, int32_t *peak_indices, int32_t peaks_len, float32_t* rrs)
+{
+  /* 计算标准差和中位数. */
+  int32_t i;
+  int32_t rrs_len = 0;
+  for (i = 0; i < peaks_len - 1; ++i)
+  {
+    rrs[rrs_len++] = peaks[i + 1] - peaks[i];
+  }
+
+  float32_t std;
+  arm_var_f32(rrs, rrs_len, &std);
+  std = sqrtf(std);
+
+
 }
 
 
@@ -297,29 +328,36 @@ void BreathAnalysis(int* s, uint32_t sample_length)
     if (_ppg_counter && (_ppg_counter % BREATH_CALL_DURATION == 0))
     {
       _peaks_len = SelectByPeakDistance(_peaks, _peak_indices, _peaks_len, 6, _left_bases, _right_bases);
-      _peaks_len = SelectByPeakProminence(_peaks, _peaks_len, _peak_indices, _left_bases, _right_bases);
-
-      for (j = 0; j < _peaks_len - 1; ++j)
-      {
-        if ((_peak_indices[j] < _ppg_counter) && (_peak_indices[j] > _last_ppg_counter))
-        {
-          _rr_buf[_rr_buf_len] = _peak_indices[j + 1] - _peak_indices[j];
-          printf("_rr_buf[%u]: %f\n", _rr_buf_len, _rr_buf[_rr_buf_len]);
-          _rr_buf_len++;
+      // _peaks_len = SelectByPeakProminence(_peaks, _peaks_len, _peak_indices, _left_bases, _right_bases);
+      
+      float *rrs = _mem_pool;
+      float *rrs_indices = rrs + 256;
+      int32_t rrs_lens = CalcRR(_peaks, _peak_indices, _peaks_len, rrs, rrs_indices);
 
 #if DEBUG
+      for (j = 0; j < _peaks_len; ++j)
+      {
+        if (_peak_indices[j] > PLOT.peak_indices[PLOT.peak_indices_len - 1])
+        {
           PLOT.peaks[PLOT.peaks_len++] = _peaks[j];
           PLOT.peak_indices[PLOT.peak_indices_len++] = _peak_indices[j];
-#endif          
-
+        }
+      }
+#endif 
+      for (j = 0; j < _peaks_len - 1; ++j)
+      {
+        if (_peak_indices[j] > _last_ppg_counter)
+        {
+          _rr_buf[_rr_buf_len] = _peak_indices[j + 1] - _peak_indices[j];
+          _rr_buf_len++;
         }
       }
 
       uint8_t breath_rate = _CalcBreathRate(_rr_buf, _rr_buf_len, 25);
-      _breath_rate_buf[_breath_rate_buf_len++] = breath_rate;
+      // _breath_rate_buf[_breath_rate_buf_len++] = breath_rate;
 
 #if DEBUG
-          PLOT.breath_rates[PLOT.breath_rates_len++] = breath_rate;
+          // PLOT.breath_rates[PLOT.breath_rates_len++] = breath_rate;
 #endif
       
       _rr_buf_len = 0;
