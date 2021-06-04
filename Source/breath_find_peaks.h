@@ -1,3 +1,4 @@
+#pragma once
 #include <stdint.h>
 
 int32_t SelectByPeakDistance(float *peaks, int32_t *peak_indices, int32_t peaks_len, int32_t distance, int32_t *left_bases, int32_t *right_bases);
