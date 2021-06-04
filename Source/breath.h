@@ -13,5 +13,5 @@ typedef struct
 } breath_result;
 
 void BreathAnalysisInit();
+// void BreathAnalysis(int* s, int32_t sample_length);
 void BreathAnalysis(int* s, int32_t sample_length, breath_result* result);
-// void BreathAnalysis(int* s, uint32_t sample_length, breath_result* result);

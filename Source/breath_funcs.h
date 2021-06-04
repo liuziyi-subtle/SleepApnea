@@ -1,6 +1,11 @@
 #include <stdint.h>
 typedef float float32_t;
 
+#define BREATH_FLT_MAX __FLT_MAX__
+#define BREATH_FLT_MIN __FLT_MIN__
+#define BREATH_INT32_MAX __INT32_MAX__
+#define BREATH_INT32_MIN __INT32_MIN__
+
 struct bpv
 {
     uint8_t type;   /*<< true -> peak, false -> valley. */

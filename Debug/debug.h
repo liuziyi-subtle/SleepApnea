@@ -2,11 +2,6 @@
 
 #define MAX_LEN (1000000)
 
-#define FLT_MAX __FLT_MAX__
-#define FLT_MIN __FLT_MIN__
-#define INT32_MAX __INT32_MAX__
-#define INT32_MIN __INT32_MIN__
-
 struct DEBUG_TRACKER {
   float x_interp[MAX_LEN];
   uint32_t x_interp_len;

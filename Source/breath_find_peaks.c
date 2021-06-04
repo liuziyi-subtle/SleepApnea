@@ -30,19 +30,19 @@ int32_t SelectByPeakDistance(float *peaks, int32_t *peak_indices, int32_t peaks_
     int32_t k = j - 1;
     while ((k >= 0) && (abs(peak_indices[j] - peak_indices[k]) < distance))
     {
-      peak_indices[k] = INT32_MAX;
+      peak_indices[k] = BREATH_INT32_MAX;
       k -= 1;
     }
 
     k = j + 1;
     while ((k < peaks_len) && (abs(peak_indices[k] - peak_indices[j]) < distance))
     {
-      peak_indices[k] = INT32_MAX;
+      peak_indices[k] = BREATH_INT32_MAX;
       k += 1;
     }
   }
 
-  /* Sort by index so as to remove INT32_MAX. */
+  /* Sort by index so as to remove BREATH_INT32_MAX. */
   for (i = 0; i < peaks_len; ++i)
   {
     v2i[i].value = peaks[i];
@@ -55,7 +55,7 @@ int32_t SelectByPeakDistance(float *peaks, int32_t *peak_indices, int32_t peaks_
     peaks[i] = v2i[i].value;
     // peak_indices[i] = v2i[i].index;
 
-    if (v2i[i].index == INT32_MAX)
+    if (v2i[i].index == BREATH_INT32_MAX)
     {
       break;
     }
@@ -73,7 +73,7 @@ int32_t SelectByPeakDistance(float *peaks, int32_t *peak_indices, int32_t peaks_
     right_bases[i] = (int32_t)v2i[i].value;
     // peak_indices[i] = v2i[i].index;
 
-    if (v2i[i].index == INT32_MAX)
+    if (v2i[i].index == BREATH_INT32_MAX)
     {
       break;
     }
@@ -91,7 +91,7 @@ int32_t SelectByPeakDistance(float *peaks, int32_t *peak_indices, int32_t peaks_
     left_bases[i] = (int32_t)v2i[i].value;
     peak_indices[i] = v2i[i].index;
 
-    if (v2i[i].index == INT32_MAX)
+    if (v2i[i].index == BREATH_INT32_MAX)
     {
       break;
     }
@@ -114,7 +114,7 @@ int32_t SelectByPeakProminence(float *peaks, int32_t peaks_len, int32_t *peak_in
       v2i[i].index = peak_indices[i];
     }
     else{
-      v2i[i].index = INT32_MAX;
+      v2i[i].index = BREATH_INT32_MAX;
     }
   }
   qsort(v2i, peaks_len, sizeof(value2index), CmpIndex);
@@ -124,7 +124,7 @@ int32_t SelectByPeakProminence(float *peaks, int32_t peaks_len, int32_t *peak_in
     peaks[i] = v2i[i].value;
     peak_indices[i] = v2i[i].index;
 
-    if (peak_indices[i] == INT32_MAX)
+    if (peak_indices[i] == BREATH_INT32_MAX)
     {
       // printf("peaks_len: %d, new_peaks_len: %d\n", peaks_len, i);
       break;
@@ -143,9 +143,9 @@ float FindPeak(float datum, int32_t *left_base, int32_t *right_base, uint8_t ini
 
 	if (init)
   {
-    max = FLT_MIN;
-    min = __FLT_MAX__;
-    last_datum = FLT_MIN;
+    max = BREATH_FLT_MIN;
+    min = BREATH_FLT_MAX;
+    last_datum = BREATH_FLT_MIN;
     since_max = 0;
     // right_points = 0;
     to_max = 0;
