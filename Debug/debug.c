@@ -16,7 +16,8 @@ void DebugInit() {
   PLOT.ppg_len = 0;
   PLOT.ppg_f_len = 0;
   PLOT.breath_rates_len = 0;
-  PLOT.rrs_len = 0;
+  PLOT.rrs_x_len = 0;
+  PLOT.rrs_y_len = 0;
 }
 
 /* Get PLOT */

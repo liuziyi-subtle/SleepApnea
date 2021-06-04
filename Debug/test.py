@@ -42,11 +42,14 @@ def _get_c_debug_info():
         "ppg_f": [PLOT.getitem_ppg_f(i) for i in range(PLOT.ppg_f_len)],
         "ppg_f_len": PLOT.ppg_f_len,
 
-        "rrs": [PLOT.getitem_rrs(i) for i in range(PLOT.rrs_len)],
-        "rrs_len": PLOT.rrs_len,
-
         "breath_rates": [PLOT.getitem_breath_rates(i) for i in range(PLOT.breath_rates_len)],
-        "breath_rates_len": PLOT.breath_rates_len
+        "breath_rates_len": PLOT.breath_rates_len,
+
+        "rrs_x": [PLOT.getitem_rrs_x(i) for i in range(PLOT.rrs_x_len)],
+        "rrs_x_len": PLOT.rrs_x_len,
+
+        "rrs_y": [PLOT.getitem_rrs_y(i) for i in range(PLOT.rrs_y_len)],
+        "rrs_y_len": PLOT.rrs_y_len
     }
     return debug_info
 
@@ -96,11 +99,16 @@ if __name__ == "__main__":
             segment_peaks = find_peaks(debug_info["ppg_f"][i:i+800], height=None, threshold=None, distance=6,
                                        prominence=None, width=6, wlen=None, rel_height=0.5, plateau_size=None)
             segment_peaks = segment_peaks[0].astype(np.int32)
+            # print("segment_peaks: ", segment_peaks + i)
             peaks = np.r_[peaks, segment_peaks + i]
+            # print("peaks: ", peaks)
         # peaks = find_peaks(debug_info["ppg_f"], height=None, threshold=None, distance=6,
         #                    prominence=None, width=None, wlen=None, rel_height=0.5, plateau_size=None)[0].astype(np.int32)
+        # print("peaks: ", peaks,
+            #   'debug_info["peak_indices"]: ', debug_info["peak_indices"])
         peaks = peaks[peaks <= debug_info["peak_indices"][-1]].astype(np.int32)
-        print(peaks)
+        # print('debug_info["peak_indices"][-1]: ',
+        #       debug_info["peak_indices"][-1])
 
         print(len(peaks), len(debug_info["peak_indices"]))
         for i in range(len(peaks)):
@@ -108,11 +116,12 @@ if __name__ == "__main__":
                 print(i, peaks[i])
                 break
 
-        fig, axes = plt.subplots(4, 1, figsize=(12, 7), sharex=False)
+        fig, axes = plt.subplots(3, 1, figsize=(12, 7), sharex=False)
         axes[0].plot(debug_info["ppg"])
         axes[1].plot(debug_info["ppg_f"])
         axes[1].plot(debug_info["peak_indices"], debug_info["peaks"], "ro")
         axes[1].plot(peaks, [debug_info["ppg_f"][p] for p in peaks], "b*")
+        axes[2].plot(debug_info["rrs_x"], debug_info["rrs_y"])
         # axes[2].plot(debug_info["y_interp_f"])
         # Pxx, freqs, bins, im = axes[3].specgram(
         #     debug_info["y_interp_f"], NFFT=600, Fs=25, noverlap=0)

@@ -8,24 +8,25 @@
 #include "breath.h"
 #include <math.h>
 #include "breath_find_peaks.h"
+#include "sleep_tracker.h"
 
 #if DEBUG
 #include "debug.h"
 #endif
 
-#define FS                        (25)
+#define BREATH_PPG_FS             (25)
 #define BREATH_NUM_BPF_STAGE      (2)
+#define BREATH_X_LEN              (128)
+#define BREATH_Y_LEN              (128)
 #define BREATH_MAX_RRS_LEN        (128)
-#define BREATH_PPG_BUF_LEN        (FS)      /*<< 1s buffer. */
+#define BREATH_PPG_BUF_LEN        (BREATH_PPG_FS)      /*<< 1s buffer. */
 #define BREATH_MAX_PV_LEN         (256)     /*<< (32 / 60) * 240BPM */
-#define BREATH_MAX_BREATH_LEN     (200)
-#define BREATH_CALL_DURATION      (32 * FS)
+#define BREATH_MAX_BREATH_LEN     (1440)
+#define BREATH_CALL_DURATION      (32 * BREATH_PPG_FS)
 #define BREATH_RATE_NONE          (-1)
 #define BREATH_SCORE_NONE         (-1)
 #define BREATH_MAX_PEAKS_LEN      (256)     /*<< 32 * (240BPM / 60) */
-
-static float32_t _mem_pool[1024];  // 4096 Bytes
-static float64_t _mem_pool_f64[1024];  // 8192 Bytes
+#define BREATH_MIN_DURATION       (180)
 
 /* fs = 5Hz, 2-scale butter bandpass = [0.1, 0.4]. */
 static breath_arm_biquad_casd_df1_inst_f32 _filter;
@@ -59,11 +60,8 @@ static float32_t _ppg_buf[BREATH_PPG_BUF_LEN];  // 100 Bytes.
 static uint32_t _ppg_nfill;
 static uint32_t _ppg_counter;
 
-// static uint32_t _num_peaks;
-static float32_t _rr_buf[BREATH_MAX_RRS_LEN];  // 512 Bytes
-static uint32_t _rr_buf_len;
-static uint32_t _total_rr_len;
-static uint32_t _last_total_rr_len;
+// static float32_t _rrs_x[BREATH_MAX_RRS_LEN];
+// static float32_t _rrs_y[BREATH_MAX_RRS_LEN];
 
 // #define BREATH_MAX_BREATH_LEN (1440)
 static uint8_t _breath_rate_buf[BREATH_MAX_BREATH_LEN];  // 200 Bytes
@@ -76,16 +74,18 @@ static uint32_t _last_ppg_counter;
 static int32_t _left_bases[BREATH_MAX_PEAKS_LEN];  // 512 Bytes
 static int32_t _right_bases[BREATH_MAX_PEAKS_LEN];  // 512 Bytes
 
-typedef struct _value2index_temp
-{
-  float32_t value;
-  int32_t index;
-} value2index_temp;
+static uint8_t _last_breath_score;
+static uint8_t _last_breath_rate_latest;
 
-static value2index_temp v2i_t[256];
-
-
-static uint8_t _CalcBreathRate(float32_t *rrs, uint32_t rrs_len, uint16_t fs)
+/**
+  @brief         Maximum value of absolute values of a Q31 vector.
+  @param[in]     pSrc       points to the input vector
+  @param[in]     blockSize  number of samples in input vector
+  @param[out]    pResult    maximum value returned here
+  @param[out]    pIndex     index of maximum value returned here
+  @return        none
+ */
+static uint8_t _CalcBreathRateRRS(float32_t *rrs_x, float32_t *rrs_y, uint32_t rrs_len, uint16_t fs)
 {
   uint32_t i;
 
@@ -95,47 +95,33 @@ static uint8_t _CalcBreathRate(float32_t *rrs, uint32_t rrs_len, uint16_t fs)
     return 0u;
   }
 
-  /**
-   * Allocate mem from _mem_pool. TODO: Replace this section with an alloc func. 
-   */
-  float32_t *x = _mem_pool;
-  uint32_t x_len = rrs_len;  /*<< max = 128. */
-
-  float32_t *coef = x + x_len;
+  /* Allocate mem from _mem_pool. */
+  float32_t *coef = GetMem();             /*<< get _mem_pool pointer. */
   uint32_t coef_len = 3 * (rrs_len - 1);  /*<< b, c, d has length (n - 1). */
   
   float32_t *buf = coef + coef_len;  /*<< 2 * rrs_len - 1 */
   uint32_t buf_len = 2 * rrs_len - 1;
 
-  uint32_t block_size = 0u;  /*<< length of the interpolated.*/
-  for (i = 0; i < rrs_len; ++i) {
-    block_size += (uint32_t)rrs[i];
-  }
-
-  float32_t *x_interp = buf + buf_len;
-  uint32_t x_interp_len = block_size;
-
-  float32_t *y_interp = x_interp + x_interp_len;
-  uint32_t y_interp_len = block_size;
-  
-  float32_t *y_interp_f = y_interp + y_interp_len;
-  uint32_t y_interp_f_len = block_size;
-
-  /* Resample rrlist to 25Hz. */
-  float32_t interval = (float32_t)rrs_len / (rrs_len - 1);
-  for (i = 0; i < rrs_len; ++i) {
-    x[i] = i * interval;
-  }
-  x[rrs_len - 1] = (float32_t)rrs_len;
-
-  interval = (float32_t)rrs_len / (block_size - 1);
-  for (i = 0; i < block_size; ++i) {
-    x_interp[i] = interval * i;
-  }
-  x_interp[block_size - 1] = (float32_t)rrs_len;
-
   arm_spline_instance_f32 S;
-  arm_spline_init_f32(&S, ARM_SPLINE_PARABOLIC_RUNOUT, x, rrs, rrs_len, coef, buf);
+  arm_spline_init_f32(&S, ARM_SPLINE_PARABOLIC_RUNOUT,
+                      rrs_x, rrs_y, rrs_len, coef, buf);
+
+  uint32_t block_size = 0u;  /*<< length of the interpolated.*/
+  float32_t *x_interp = buf + buf_len;
+  float32_t x_next = rrs_x[0];
+  float32_t interval = (float32_t)BREATH_PPG_FS / 4.0f;
+
+  /* Construct x_interp and y_interp. */
+  while(x_next <= rrs_x[rrs_len - 1])
+  {
+    x_interp[block_size++] = x_next;
+    x_next += interval;
+  }
+
+  float32_t *y_interp = x_interp + block_size;
+  uint32_t y_interp_len = block_size;
+
+  /* Resample rrlist to 4Hz. */
   arm_spline_f32(&S, x_interp, y_interp, block_size);
 
 #if DEBUG
@@ -145,43 +131,84 @@ static uint8_t _CalcBreathRate(float32_t *rrs, uint32_t rrs_len, uint16_t fs)
   }
 #endif
 
-  /* Filter breath. TODO: Place-in. */
-  breath_arm_biquad_cascade_df1_init_f32(&_filter, BREATH_NUM_BPF_STAGE,
-                                  _coeff, _state);
-  breath_arm_biquad_cascade_df1_f32(&_filter, y_interp, y_interp_f, y_interp_f_len);
-
-#if DEBUG
-  for (i = 0; i < y_interp_f_len; ++i) {
-    PLOT.y_interp_f[PLOT.y_interp_f_len++] = y_interp_f[i];
-    // printf("y_interp_f[%u]: %f\n", i, y_interp_f[i]);
-  }
-#endif
-
   /* Welch. */
-  float64_t *y_interp_f_f64 = _mem_pool_f64;  /*<< Transfer to float64_t. */
-  float64_t *welch_density = y_interp_f_f64 + y_interp_f_len;
-  for (i = 0; i < y_interp_f_len; ++i) {
-    y_interp_f_f64[i] = (float64_t)y_interp_f[i];
+  float32_t *y_interp_f = y_interp + y_interp_len;
+  uint32_t y_interp_f_len = 128;
+  for (i = 0; i < y_interp_f_len; ++i)
+  {
+    y_interp_f[i] = i < y_interp_len?y_interp[i]:.0f;
   }
-  uint32_t welch_density_len = SpktWelchDensity(y_interp_f_f64, y_interp_f_len,
-                                                welch_density);
 
-  /* Find max. */
-  float64_t maxval;
-  uint32_t maxval_index;
-  FindMax(welch_density, welch_density_len, &maxval, &maxval_index);
-  uint8_t breath_rate = (uint8_t)(maxval_index * (fs / 64.0f));
-  printf("maxval_index: %u, maxval: %f, breath_rate: %f\n", maxval_index, maxval, breath_rate);
+  float32_t *welch_density = y_interp_f + y_interp_f_len;
+  uint32_t welch_density_len = SpktWelchDensity(y_interp_f, y_interp_f_len,
+                                                welch_density);
+  
+  /* Select welch_density[6] ~ welch_density[24], corresponding to 0.15 ~ 0.4Hz,
+   * 6 ~ 24 breaths.s
+   */
+  uint32_t start = 6, end = 24, len = 24 - 6 + 1;
+  float32_t max = welch_density[6];
+  value2index *v2i = GetV2I();
+
+  for (i = start; i <= end; ++i)
+  {
+    v2i[i - start].index = (int32_t)i;
+    v2i[i - start].value = welch_density[i];
+  }
+  qsort(v2i, len, sizeof(value2index), CmpValue);
+
+  /* Refine frequence. */
+  float32_t freq_value_1st = v2i[len - 1].value;
+  int32_t freq_index_1st = v2i[len - 1].index;
+  float32_t freq_value_2nd = v2i[len - 2].value;
+  int32_t freq_index_2nd = v2i[len - 2].index;
+  float32_t freq_value_3rd = v2i[len - 3].value;
+  int32_t freq_index_3rd = v2i[len - 3].index;
+
+  int32_t max_index;
+  if (freq_value_1st > 0.6 * freq_value_2nd)
+  {
+    max_index = freq_index_1st;
+    printf("1: max_index = %d\n", max_index);
+  }
+  else
+  {
+    if (freq_index_1st > 10)
+    {
+      max_index = freq_index_2nd;
+      printf("2: max_index = %d\n", max_index);
+    }
+    else
+    {
+      max_index = freq_index_1st;
+      printf("3: max_index = %d\n", max_index);
+    }
+  }
+
+
+  float32_t breath_rate = ((float32_t)max_index * 4 / 128.0f * 60);
+  // printf("(float32_t)max_index: %f\n", (float32_t)max_index);
+  // printf("(float32_t)fs: %f\n", (float32_t)fs);
+  // printf("(float32_t)max_index * (float32_t)fs / 128.0f * 60: ", (float32_t)max_index * (float32_t)fs / 128.0f * 60);
 
 #if DEBUG
-  for (i = 0; i < welch_density_len; ++i) {
-    PLOT.welch_density[PLOT.welch_density_len++] = welch_density[i];
-  }
+  // for (i = 0; i < welch_density_len; ++i) {
+  //   PLOT.welch_density[PLOT.welch_density_len++] = welch_density[i];
+  // }
+  printf("breath_rate: %f\n", breath_rate);
 #endif  
 
-  return 0;
+  return (uint8_t)(rand() % (10) + 90); // (uint8_t)breath_rate;
 }
 
+/**
+  @brief         Maximum value of absolute values of a Q31 vector.
+  @param[in]     pSrc       points to the input vector
+  @param[in]     blockSize  number of samples in input vector
+  @param[out]    pResult    maximum value returned here
+  @param[out]    pIndex     index of maximum value returned here
+  @return        none
+ */
 void _DetectPeaks(float32_t ppg)
 {
   uint32_t i, j;
@@ -191,7 +218,6 @@ void _DetectPeaks(float32_t ppg)
   breath_arm_biquad_cascade_df1_f32(&_filter_ppg, &ppg, &ppg_f, 1);
   _ppg_buf[_ppg_nfill] = ppg_f;
   _ppg_nfill++;
-  _ppg_counter++;
 
 #if DEBUG
   PLOT.ppg[PLOT.ppg_len++] = ppg;
@@ -237,13 +263,102 @@ void _DetectPeaks(float32_t ppg)
   return;
 }
 
-uint8_t _CalcSleepBreathScore(uint8_t *breath_rate_buf, uint32_t breath_rate_buf_len)
+/**
+  @brief         Maximum value of absolute values of a Q31 vector.
+  @param[in]     pSrc       points to the input vector
+  @param[in]     blockSize  number of samples in input vector
+  @param[out]    pResult    maximum value returned here
+  @param[out]    pIndex     index of maximum value returned here
+  @return        none
+ */
+int32_t CalcRR(float32_t *peaks, int32_t *peak_indices, int32_t peaks_len, float32_t* rrs_x, float32_t *rrs_y)
 {
-  // return 5;
-  int score = rand() % (10) + 90;
-  return (uint8_t)score;
+  /* 计算标准差和中位数. */
+  int32_t i, j;
+  value2index *v2i = GetV2I();  /*<< Get pointer from breath_funcs.c. */
+
+  for (i = 0; i < peaks_len - 1; ++i)
+  {
+    rrs_x[i] = peak_indices[i];
+    rrs_y[i] = peak_indices[i + 1] - peak_indices[i];
+
+    v2i[i].index = peak_indices[i];
+    v2i[i].value = peak_indices[i + 1] - peak_indices[i];
+  }
+
+  /* Standard deviation. */
+  float32_t std;
+  arm_var_f32(rrs_y, peaks_len - 1, &std);
+  std = sqrtf(std);
+
+  /* Median. */
+  qsort(rrs_y, peaks_len - 1, sizeof(float32_t), CmpFunc);
+  float32_t median = Quantile(rrs_y, peaks_len - 1, 0.5);
+
+  /* Filter RR. */
+  for (i = 0; i < peaks_len - 1; ++i)
+  {
+    if (fabs(v2i[i].value - median) > 1.5 * std)
+    {
+      v2i[i].index = INT32_MAX;
+    }
+  }
+  qsort(v2i, peaks_len - 1, sizeof(value2index), CmpIndex);
+
+  int32_t rrs_len = 0;
+  while ((v2i[rrs_len].index != INT32_MAX) && (rrs_len < peaks_len - 1))
+  {
+    rrs_x[rrs_len] = v2i[rrs_len].index;
+    rrs_y[rrs_len] = v2i[rrs_len].value;
+    rrs_len++;
+    if (rrs_y[rrs_len - 1] < 0)
+    {
+      // printf("rrs_y[rrs_len - 1]: %f\n", rrs_y[rrs_len - 1]);
+    }
+  }
+
+  return rrs_len;
 }
 
+/**
+  @brief         Maximum value of absolute values of a Q31 vector.
+  @param[in]     pSrc       points to the input vector
+  @param[in]     blockSize  number of samples in input vector
+  @param[out]    pResult    maximum value returned here
+  @param[out]    pIndex     index of maximum value returned here
+  @return        none
+ */
+static uint8_t _CalcSleepBreathScore(uint8_t *breath_rate_buf, uint32_t breath_rate_buf_len)
+{
+  float cv = CoefVariation(breath_rate_buf, breath_rate_buf_len);
+  
+  int score;
+  if (cv >= 0.1f)
+  {
+    score = 60u;
+  }
+  else if (cv >= 0.05f)
+  {
+    score = ((cv - 0.1f) / 0.1f) * 20u + 60u;
+  }
+  else
+  {
+    score = score = rand() % (10) + 90;
+  }
+  
+  uint score = rand() % (10) + 90u;
+
+  return score;
+}
+
+/**
+  @brief         Maximum value of absolute values of a Q31 vector.
+  @param[in]     pSrc       points to the input vector
+  @param[in]     blockSize  number of samples in input vector
+  @param[out]    pResult    maximum value returned here
+  @param[out]    pIndex     index of maximum value returned here
+  @return        none
+ */
 void BreathAnalysisInit()
 {
   uint32_t i;
@@ -257,26 +372,6 @@ void BreathAnalysisInit()
 
   _ppg_nfill = 0;
   _ppg_counter = 0;
-  // _valley_value = __FLT_MAX__;
-  // _valley_index = -1;
-
-  // _candpv.npv = 0;
-  // for (int i = 0; i < BREATH_MAX_PV_LEN; i++)
-  // {
-  //   _candpv.pv[i] = MakeBPV(0, 0, 0);
-  // }
-
-  for (int i = 0; i < BREATH_MAX_RRS_LEN; i++)
-  {
-    // _pv_buf[i] = .0f;
-    // _peak_buf[i] = .0f;
-    // _peak_index_buf[i] = 0;
-    _rr_buf[i] = .0f;
-  }
-  // _num_peaks = 0;
-  _rr_buf_len = 0;
-  _total_rr_len = 0;
-  _last_total_rr_len = 0;
 
   FindPeak(0, NULL, NULL, 1);
 
@@ -288,6 +383,9 @@ void BreathAnalysisInit()
   _peaks_len = 0;
   _last_ppg_counter = 0;
 
+  _last_breath_score = BREATH_SCORE_NONE;
+  _last_breath_rate = BREATH_RATE_NONE;
+
 #if DEBUG
   DebugInit();
 #endif
@@ -295,86 +393,145 @@ void BreathAnalysisInit()
   return;
 }
 
-
-int32_t CalcRR(float32_t *peaks, int32_t *peak_indices, int32_t peaks_len, float32_t* rrs)
+/**
+  @brief         Maximum value of absolute values of a Q31 vector.
+  @param[in]     pSrc       points to the input vector
+  @param[in]     blockSize  number of samples in input vector
+  @param[out]    pResult    maximum value returned here
+  @param[out]    pIndex     index of maximum value returned here
+  @return        none
+ */
+// void BreathAnalysis(int* s, int32_t sample_length)
+void BreathAnalysis(int* s, int32_t sample_length, breath_result* result)
 {
-  /* 计算标准差和中位数. */
   int32_t i;
-  int32_t rrs_len = 0;
-  for (i = 0; i < peaks_len - 1; ++i)
+
+  result->breath_score = BREATH_SCORE_NONE;
+  result->breath_rate = BREATH_RATE_NONE;
+
+  /* Check sleep result. */
+  LSSleepResult* sleep_result = GetSleepResult();  /*<< TODO: implement func. */
+  if (sleep_result->Terminator_t == T_NONE)
   {
-    rrs[rrs_len++] = peaks[i + 1] - peaks[i];
+    /* Not in sleep. */
+    return;
+  }
+  else if (sleep_result->Terminator_t == T_COMP)
+  {
+    /* Sleep completed. */
+    BreathAnalysisInit();
+    return;
+  }
+  else if (sleep_result->getupTimeUtc - sleep_result->sleepTimeUtc < BREATH_MIN_DURATION)
+  {
+      /* In sleep but not meeting the min duration requirement. */
+      return;
   }
 
-  float32_t std;
-  arm_var_f32(rrs, rrs_len, &std);
-  std = sqrtf(std);
-
-
-}
-
-
-// void BreathAnalysis(bioSignal_t* s, breath_result* result)
-// void BreathAnalysis(int* s, uint32_t sample_length, breath_result* result)
-void BreathAnalysis(int* s, uint32_t sample_length)
-// void BreathAnalysis(int* s, uint32_t sample_length, breath_result* result)
-{
-  uint32_t i, j;
   
   for (i = 0; i < sample_length; ++i)
   {
+    _ppg_counter++;
+    _sleep_counter++;
+
     _DetectPeaks((float32_t)s[i]);
 
     if (_ppg_counter && (_ppg_counter % BREATH_CALL_DURATION == 0))
     {
+      /* Refine peaks. */
       _peaks_len = SelectByPeakDistance(_peaks, _peak_indices, _peaks_len, 6, _left_bases, _right_bases);
       // _peaks_len = SelectByPeakProminence(_peaks, _peaks_len, _peak_indices, _left_bases, _right_bases);
-      
-      float *rrs = _mem_pool;
-      float *rrs_indices = rrs + 256;
-      int32_t rrs_lens = CalcRR(_peaks, _peak_indices, _peaks_len, rrs, rrs_indices);
 
-#if DEBUG
-      for (j = 0; j < _peaks_len; ++j)
-      {
-        if (_peak_indices[j] > PLOT.peak_indices[PLOT.peak_indices_len - 1])
-        {
-          PLOT.peaks[PLOT.peaks_len++] = _peaks[j];
-          PLOT.peak_indices[PLOT.peak_indices_len++] = _peak_indices[j];
-        }
+      /* Starting from last ppg_counter. */
+      int32_t start = 0;
+      while (_peak_indices[start] < _last_ppg_counter) {
+        start++;
       }
-#endif 
-      for (j = 0; j < _peaks_len - 1; ++j)
-      {
-        if (_peak_indices[j] > _last_ppg_counter)
-        {
-          _rr_buf[_rr_buf_len] = _peak_indices[j + 1] - _peak_indices[j];
-          _rr_buf_len++;
-        }
-      }
-
-      uint8_t breath_rate = _CalcBreathRate(_rr_buf, _rr_buf_len, 25);
-      // _breath_rate_buf[_breath_rate_buf_len++] = breath_rate;
-
-#if DEBUG
-          // PLOT.breath_rates[PLOT.breath_rates_len++] = breath_rate;
-#endif
-      
-      _rr_buf_len = 0;
       _last_ppg_counter = _ppg_counter;
+
+
+      /* Check peaks quality. */
+      uint8_t peak_quality = CheckPeakQuality(&_peaks[start], &_peak_indices[start], _peaks_len - start + 1);
+      peak_quality = 1u;  /*<< TODO: remove this. */
+
+      /* RIAV, RIVF and RIIV. */
+      float32_t x[BREATH_X_LEN] = {.0f};
+      float32_t y[BREATH_Y_LEN] = {.0f};
+      uint8_t breath_rate = 0u;
+
+      /* RIIV. */
+      int32_t rrs_len = CalcRR(&_peaks[start], &_peak_indices[start], _peaks_len - start + 1, x, y);
+      uint8_t breath_rate_rrs = _CalcBreathRateRRS(x, y, rrs_len, BREATH_PPG_FS);
+      breath_rate += breath_rate_rrs;
+
+      /* RIAV. */
+      breath_rate += breath_rate_rrs;  /*<< TODO: replace and implement funcs. */
+
+      /* RIFV. */
+      breath_rate += breath_rate_rrs;  /*<< TODO: replace and implement funcs. */
+
+      /* Check temporary awake. */
+      if (sleep_result->sleepTimeUtc == _last_sleepTimeUtc)
+      {
+        /* Awake duration > 60 sec. */
+        if (_sleep_counter > BREATH_PPG_FS * 64)
+        {
+          result->breath_score = _last_breath_score;
+          result->breath_rate = _last_breath_rate;
+          return;
+        }
+      }
+      else
+      {
+        _sleep_counter = 0u;
+      }
+
+      if (peak_quality)
+      {
+        /* Calculate breath rate. */
+        breath_rate = (uint8_t)(breath_rate / 3.0f);
+        _breath_rate_buf[_breath_rate_buf_len++] = breath_rate;
+
+        /* Calculate breath score. */
+        uint8_t breath_score;
+        breath_score = _CalcSleepBreathScore(_breath_rate_buf, _breath_rate_buf_len);
+
+        _last_breath_rate = breath_rate;
+        _last_breath_score = breath_score;
+      }
+      else
+      {
+        breath_rate = _last_breath_rate;
+        breath_score = _last_breath_score;
+      }
+
+#if DEBUG
+      // int32_t j;
+      // for (j = 0; j < _peaks_len; ++j)
+      // {
+      //   if (_peak_indices[j] > PLOT.peak_indices[PLOT.peak_indices_len - 1])
+      //   {
+      //     PLOT.peaks[PLOT.peaks_len++] = _peaks[j];
+      //     PLOT.peak_indices[PLOT.peak_indices_len++] = _peak_indices[j];
+      //   }
+      // }
+
+      // for (j = 0; j < rrs_len; ++j)
+      // {
+      //   if (rrs_x[j] > PLOT.rrs_x[PLOT.rrs_x_len - 1])
+      //   {
+      //     PLOT.rrs_x[PLOT.rrs_x_len++] = rrs_x[j];
+      //     PLOT.rrs_y[PLOT.rrs_y_len++] = rrs_y[j];
+
+      //   }
+      // }
+
+      // PLOT.breath_rates[PLOT.breath_rates_len++] = breath_rate;
+#endif
     }
   }
 
-  // /* 如果不满足最小时长则不计算分数. */
-  // if (_ppg_counter < FS * 3600 * 3)
-  // {
-  //   result->breath_score = BREATH_SCORE_NONE;
-  // }
-  // else
-  // {
-  //   uint8_t breath_score = _CalcSleepBreathScore(_breath_rate_buf, _breath_rate_buf_len);
-  //   result->breath_score = breath_score;
-  // }
+  _last_sleepTimeUtc = sleep_result->sleepTimeUtc;
 
   return;
 }

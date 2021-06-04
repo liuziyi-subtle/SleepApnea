@@ -1,5 +1,5 @@
 #include <stdint.h>
-typedef double float64_t;
+typedef float float32_t;
 
 /**
  * @brief Error status returned by some functions in the library.
@@ -18,37 +18,36 @@ typedef enum {
  * @brief Instance structure for the Double Precision Floating-point CFFT/CIFFT
  * function.
  */
-typedef struct {
-  uint16_t fftLen;              /**< length of the FFT. */
-  const float64_t *pTwiddle;    /**< points to the Twiddle factor table. */
-  const uint16_t *pBitRevTable; /**< points to the bit reversal table. */
-  uint16_t bitRevLength;        /**< bit reversal table length. */
-} arm_cfft_instance_f64;
+typedef struct
+{
+  uint16_t fftLen;               /**< length of the FFT. */
+  const float32_t *pTwiddle;     /**< points to the Twiddle factor table. */
+  const uint16_t *pBitRevTable;  /**< points to the bit reversal table. */
+  uint16_t bitRevLength;         /**< bit reversal table length. */
+
+} arm_cfft_instance_f32;
+
 
 /**
  * @brief Instance structure for the Double Precision Floating-point RFFT/RIFFT
  * function.
  */
-typedef struct {
-  arm_cfft_instance_f64 Sint; /**< Internal CFFT structure. */
-  uint16_t fftLenRFFT;                /**< length of the real sequence */
-  const float64_t *pTwiddleRFFT;      /**< Twiddle factors real stage  */
-} arm_rfft_fast_instance_f64;
+typedef struct
+{
+  arm_cfft_instance_f32 Sint;      /**< Internal CFFT structure. */
+  uint16_t fftLenRFFT;             /**< length of the real sequence */
+  const float32_t * pTwiddleRFFT;        /**< Twiddle factors real stage  */
+} arm_rfft_fast_instance_f32 ;
 
-
-void arm_cfft_f64(const arm_cfft_instance_f64* S, float64_t* p1,
-                  uint8_t ifftFlag, uint8_t bitReverseFlag);
                   
-arm_status arm_rfft_64_fast_init_f64(arm_rfft_fast_instance_f64 *S);
+arm_status arm_rfft_128_fast_init_f32( arm_rfft_fast_instance_f32 * S );
 
-void arm_rfft_fast_f64(arm_rfft_fast_instance_f64 *S,
-                       float64_t *p, float64_t *pOut, uint8_t ifftFlag);
+void arm_cfft_f32(const arm_cfft_instance_f32 * S,
+                  float32_t * p1,
+                  uint8_t ifftFlag,
+                  uint8_t bitReverseFlag);
 
-void arm_radix4_butterfly_f64(float64_t* pSrc, uint16_t fftLen,
-                              const float64_t* pCoef,
-                              uint16_t twidCoefModifier);
-
-void arm_bitreversal_64(uint64_t* pSrc, const uint16_t bitRevLen,
-                        const uint16_t* pBitRevTable);
-                 
-
+void arm_rfft_fast_f32(const arm_rfft_fast_instance_f32 * S,
+                       float32_t * p,
+                       float32_t * pOut,
+                       uint8_t ifftFlag);

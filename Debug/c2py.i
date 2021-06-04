@@ -108,13 +108,22 @@ void BreathAnalysis(int* s, uint32_t sample_length);
     return ($self->breath_rates[i]);
   }
 
-  // rrs
-  float getitem_rrs(size_t i) {
-    if (i >= $self->rrs_len) {
+  // rrs_x
+  float getitem_rrs_x(size_t i) {
+    if (i >= $self->rrs_x_len) {
       teststructErr = 1;
       return 0;
     }
-    return ($self->rrs[i]);
+    return ($self->rrs_x[i]);
+  }
+
+  // rrs_y
+  float getitem_rrs_y(size_t i) {
+    if (i >= $self->rrs_y_len) {
+      teststructErr = 1;
+      return 0;
+    }
+    return ($self->rrs_y[i]);
   }
 
   // welch_density

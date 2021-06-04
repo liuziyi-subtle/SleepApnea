@@ -3,41 +3,19 @@
 #include <float.h>
 #include "breath_find_peaks.h"
 #include <stdlib.h>
+#include "breath_funcs.h"
 
 #if DEBUG
 #include "debug.h"
 #endif
 
-typedef struct _value2index 
-{
-  float value;
-  int32_t index;
-} value2index;
-
-static value2index v2i[150];
-
-int CmpValue(const void *a, const void *b){
-  if (((value2index*)a)->value - ((value2index*)b)->value > 0)
-  {
-    return 1;
-  }
-  else
-  {
-    return -1;
-  }
-}
-
-int CmpIndex(const void *a, const void *b){
-    return ((value2index*)a)->index - ((value2index*)b)->index;
-}
 
 int32_t SelectByPeakDistance(float *peaks, int32_t *peak_indices, int32_t peaks_len, int32_t distance, int32_t *left_bases, int32_t *right_bases)
 {
-  if (peaks_len >= 150)
-  {
-    printf("peaks_len: %d\n", peaks_len);
-  }
   int32_t i;
+  
+  value2index* v2i = GetV2I();
+  
   for (i = 0; i < peaks_len; ++i)
   {
     v2i[i].value = peaks[i];
@@ -125,6 +103,8 @@ int32_t SelectByPeakDistance(float *peaks, int32_t *peak_indices, int32_t peaks_
 int32_t SelectByPeakProminence(float *peaks, int32_t peaks_len, int32_t *peak_indices, int32_t *left_bases, int32_t *right_bases)
 {
   int32_t i;
+
+  value2index* v2i = GetV2I();
 
   for (i = 0; i < peaks_len; ++i)
   {

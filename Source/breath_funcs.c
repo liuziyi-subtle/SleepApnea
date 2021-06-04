@@ -10,47 +10,44 @@
 
 #define BREATH_HANN_SCALE (0.041666666666666664353702032031)
 
-const static float64_t _hann_window[64] = 
+/* signal.get_window('hann', 128). */
+const static float32_t _hann_window[128] = 
 {
-    0.000000000000000000000000000000, 0.002407636663901591145275915551,
-    0.009607359798384784710378880845, 0.021529832133895587809035987448,
-    0.038060233744356630758431947470, 0.059039367825822530733148596482,
-    0.084265193848727326653147429170, 0.113494773318631503311593178296,
-    0.146446609406726269142495766573, 0.182803357918177367125167620543,
-    0.222214883490199022197941758350, 0.264301631587001151224569639453,
-    0.308658283817455136865959275383, 0.354857661372768862229065689462,
-    0.402454838991935903713681454974, 0.450991429835219670430035421305,
-    0.500000000000000000000000000000, 0.549008570164780440592267041211,
-    0.597545161008064207308621007542, 0.645142338627231137770934310538,
-    0.691341716182544918645191955875, 0.735698368412998959797732823063,
-    0.777785116509801088824360704166, 0.817196642081822743897134841973,
-    0.853553390593273730857504233427, 0.886505226681368552199558052962,
-    0.915734806151272673346852570830, 0.940960632174177469266851403518,
-    0.961939766255643369241568052530, 0.978470167866104523213266475068,
-    0.990392640201615215289621119155, 0.997592363336098464365875315707,
-    1.000000000000000000000000000000, 0.997592363336098464365875315707,
-    0.990392640201615215289621119155, 0.978470167866104523213266475068,
-    0.961939766255643369241568052530, 0.940960632174177469266851403518,
-    0.915734806151272673346852570830, 0.886505226681368552199558052962,
-    0.853553390593273730857504233427, 0.817196642081822854919437304488,
-    0.777785116509801088824360704166, 0.735698368412998959797732823063,
-    0.691341716182545140689796880906, 0.645142338627231137770934310538,
-    0.597545161008064207308621007542, 0.549008570164780218547662116180,
-    0.500000000000000000000000000000, 0.450991429835219892474640346336,
-    0.402454838991935792691378992458, 0.354857661372768862229065689462,
-    0.308658283817454970332505581609, 0.264301631587001151224569639453,
-    0.222214883490199022197941758350, 0.182803357918177145080562695512,
-    0.146446609406726269142495766573, 0.113494773318631669845046872069,
-    0.084265193848727326653147429170, 0.059039367825822530733148596482,
-    0.038060233744356741780734409986, 0.021529832133895587809035987448,
-    0.009607359798384784710378880845, 0.002407636663901535634124684293
+  0.        , 0.00060227, 0.00240764, 0.00541175, 0.00960736,
+  0.01498437, 0.02152983, 0.02922797, 0.03806023, 0.04800535,
+  0.05903937, 0.07113569, 0.08426519, 0.09839623, 0.11349477,
+  0.12952444, 0.14644661, 0.16422052, 0.18280336, 0.20215035,
+  0.22221488, 0.24294863, 0.26430163, 0.28622245, 0.30865828,
+  0.33155507, 0.35485766, 0.37850991, 0.40245484, 0.42663476,
+  0.45099143, 0.47546616, 0.5       , 0.52453384, 0.54900857,
+  0.57336524, 0.59754516, 0.62149009, 0.64514234, 0.66844493,
+  0.69134172, 0.71377755, 0.73569837, 0.75705137, 0.77778512,
+  0.79784965, 0.81719664, 0.83577948, 0.85355339, 0.87047556,
+  0.88650523, 0.90160377, 0.91573481, 0.92886431, 0.94096063,
+  0.95199465, 0.96193977, 0.97077203, 0.97847017, 0.98501563,
+  0.99039264, 0.99458825, 0.99759236, 0.99939773, 1.        ,
+  0.99939773, 0.99759236, 0.99458825, 0.99039264, 0.98501563,
+  0.97847017, 0.97077203, 0.96193977, 0.95199465, 0.94096063,
+  0.92886431, 0.91573481, 0.90160377, 0.88650523, 0.87047556,
+  0.85355339, 0.83577948, 0.81719664, 0.79784965, 0.77778512,
+  0.75705137, 0.73569837, 0.71377755, 0.69134172, 0.66844493,
+  0.64514234, 0.62149009, 0.59754516, 0.57336524, 0.54900857,
+  0.52453384, 0.5       , 0.47546616, 0.45099143, 0.42663476,
+  0.40245484, 0.37850991, 0.35485766, 0.33155507, 0.30865828,
+  0.28622245, 0.26430163, 0.24294863, 0.22221488, 0.20215035,
+  0.18280336, 0.16422052, 0.14644661, 0.12952444, 0.11349477,
+  0.09839623, 0.08426519, 0.07113569, 0.05903937, 0.04800535,
+  0.03806023, 0.02922797, 0.02152983, 0.01498437, 0.00960736,
+  0.00541175, 0.00240764, 0.00060227
 };
 
-static float64_t _mem_pool[1024];  // 32768 Bytes
+// static float64_t _mem_pool[1024];  // 32768 Bytes
+static float _mem_pool[2048];
+static value2index v2i[256];
 
-float64_t Mean(const float64_t* data, uint32_t data_len) {
+float32_t Mean(const float32_t* data, uint32_t data_len) {
   uint32_t count;      /*<< loop counter */
-  float64_t sum = 0.0; /*<< temporary result storage */
+  float32_t sum = 0.0; /*<< temporary result storage */
 
   /* Initialize counter with number of samples */
   count = data_len;
@@ -59,13 +56,13 @@ float64_t Mean(const float64_t* data, uint32_t data_len) {
     count--;
   }
 
-  float64_t mean = (sum / data_len);
+  float32_t mean = (sum / data_len);
 
   return mean;
 }
 
-void _SortFunc(float64_t* data, uint32_t data_length) {
-  float64_t temp;
+void _SortFunc(float32_t* data, uint32_t data_length) {
+  float32_t temp;
   uint32_t i, j;
   // Sort the array nums in ascending order
   for (i = 0; i < data_length - 1; i++) {
@@ -82,7 +79,7 @@ void _SortFunc(float64_t* data, uint32_t data_length) {
   return;
 }
 
-void FindMax(float64_t * data, uint32_t data_len, float64_t* maxval,
+void FindMax(float32_t * data, uint32_t data_len, float32_t* maxval,
              uint32_t * maxval_index)
 {
   uint32_t i;
@@ -103,34 +100,55 @@ void FindMax(float64_t * data, uint32_t data_len, float64_t* maxval,
   return;
 }
 
-uint32_t SpktWelchDensity(float64_t* data, uint32_t data_len, float64_t* results) {
-  float64_t mean = Mean(data, data_len);
-  float64_t* temp_data = _mem_pool;
+uint32_t SpktWelchDensity(float32_t* data, uint32_t data_len, float32_t* results) {
+  float32_t mean = Mean(data, data_len);
+  // float32_t* temp_data = _mem_pool;
   // float64_t* results = _mem_pool + data_len;
 
   uint32_t i;
-  for (i = 0; i < data_len; ++i) {
-    temp_data[i] = (data[i] - mean) * _hann_window[i];
+  for (i = 0; i < data_len; ++i)  /*  */
+  {
+    data[i] = (data[i] - mean) * _hann_window[i];
   }
 
-  arm_rfft_fast_instance_f64 S;
-  arm_rfft_64_fast_init_f64(&S);
-  arm_rfft_fast_f64(&S, temp_data, results, 0);
+#ifdef DEBUG
+  // printf("==================== Enter breath_funcs.c =====================\n");
+  // for (i = 0; i < data_len; ++i)
+  // {
+  //   printf("%f,\n", data[i]);
+  // }
 
-  for (i = 0; i < data_len; i += 2) {
+  // printf("---------------------------------------------------------------\n");
+#endif
+
+  arm_rfft_fast_instance_f32 S;
+  arm_rfft_128_fast_init_f32(&S);
+  arm_rfft_fast_f32(&S, data, results, 0);
+
+  for (i = 0; i < data_len; i += 2)
+  {
     results[i] = (pow(results[i], 2) + pow(results[i + 1], 2)) * BREATH_HANN_SCALE;
-    // printf("results[%u]: %f\n", i, results[i]);
-    // printf("results[%u]: %f\n", i + 1, results[i + 1]);
+    // results[i] = sqrtf(pow(results[i], 2) + pow(results[i + 1], 2));
   }
 
-  float64_t* p = &results[1];
-  float64_t* q = p + 1;
+  /* Move results[0], results[2], results[4], ... to results[0], results[2],
+   * results[4], ... .*/
+  float32_t* p = &results[1];
+  float32_t* q = p + 1;
   while (p != &results[(int)(data_len / 2)]) {
     *p = *q;
-    *p = (*p) * 2;
+    *p = (*p) * 2;  /*<< why *2? */
     q += 2;
     p++;
   }
+
+#ifdef DEBUG
+  // for (i = 0; i < (uint32_t)(data_len / 2); ++i)
+  // {
+  //   printf("results[%u]: %f\n", i, results[i] / 2.0f);
+  // }
+  // printf("==================== Quite breath_funcs.c ====================\n");
+#endif
 
   return (uint32_t)(data_len / 2);
 }
@@ -281,3 +299,63 @@ void arm_var_f32(
 
 }
 #endif // __CC_ARM
+
+/* 默认排序过 */
+float Quantile(const float* data, uint32_t data_length, float q) {
+  float qIndexRight = 1.0 + (data_length - 1.0) * q;
+  float qIndexLeft = floor(qIndexRight);
+  float fraction = qIndexRight - qIndexLeft;
+  uint32_t qIndex = (uint32_t)qIndexLeft;
+  float quantile = data[qIndex - 1u] + (data[qIndex] - data[qIndex - 1u]) * fraction;
+  return quantile;
+}
+
+float CoefVariation(uint8_t *data, uint32_t data_len)
+{
+  /* STD and Mean. */
+  float32_t std;
+  arm_var_f32(data, data_len, &std);
+  std = sqrtf(std);
+
+  /* What if mean close to 0. */
+  float mean = Mean(data, data_len);
+
+  float cv = std / mean;
+
+  return cv;
+}
+
+
+int CmpValue(const void *a, const void *b)
+{
+  if (((value2index*)a)->value - ((value2index*)b)->value > 0)
+  {
+    return 1;
+  }
+  else
+  {
+    return -1;
+  }
+}
+
+
+int CmpIndex(const void *a, const void *b)
+{
+    return ((value2index*)a)->index - ((value2index*)b)->index;
+}
+
+
+int CmpFunc(const void* a, const void* b) {
+  return (*(float*)a > *(float*)b) ? 1 : -1;
+}
+
+
+value2index* GetV2I(void)
+{
+  return v2i;
+}
+
+float* GetMem(void)
+{
+  return _mem_pool;
+}

@@ -35,8 +35,11 @@ struct DEBUG_TRACKER {
   int breath_rates[MAX_LEN];
   int breath_rates_len;
 
-  float rrs[MAX_LEN];
-  int rrs_len;
+  float rrs_x[MAX_LEN];
+  int rrs_x_len;
+
+  float rrs_y[MAX_LEN];
+  int rrs_y_len;
 };
 
 extern struct DEBUG_TRACKER PLOT;
