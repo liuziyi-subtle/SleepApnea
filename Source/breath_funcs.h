@@ -26,7 +26,7 @@ void FindMax(float32_t * data, uint32_t data_len, float32_t* maxval, uint32_t * 
 uint32_t SpktWelchDensity(float32_t* data, uint32_t data_len, float32_t* results);
 // uint8_t FindPeaks(const float *array, int32_t L, int32_t i, int16_t radius, int32_t minPH, int32_t maxPH);
 float FindPeak(float datum, int32_t *left_base, int32_t *right_base, uint8_t init);
-struct bpv MakeBPV(uint8_t type, int pos, float val);
+// struct bpv MakeBPV(uint8_t type, int pos, float val);
 float Quantile(const float* data, uint32_t data_length, float q);
 int CmpValue(const void *a, const void *b);
 int CmpIndex(const void *a, const void *b);

@@ -164,7 +164,7 @@ struct bpv MakeBPV(uint8_t type, int pos, float val)
 }
 
 #ifndef __CC_ARM
-void arm_var_f32(
+void breath_arm_var_f32(
   float * pSrc,
   uint32_t blockSize,
   float * pResult)
@@ -314,7 +314,7 @@ float CoefVariation(uint8_t *data, uint32_t data_len)
 {
   /* STD and Mean. */
   float32_t std;
-  arm_var_f32(data, data_len, &std);
+  breath_arm_var_f32(data, data_len, &std);
   std = sqrtf(std);
 
   /* What if mean close to 0. */

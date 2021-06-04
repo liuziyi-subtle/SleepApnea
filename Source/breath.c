@@ -301,7 +301,7 @@ int32_t CalcRR(float32_t *peaks, int32_t *peak_indices, int32_t peaks_len, float
 
   /* Standard deviation. */
   float32_t std;
-  arm_var_f32(rrs_y, peaks_len - 1, &std);
+  breath_arm_var_f32(rrs_y, peaks_len - 1, &std);
   std = sqrtf(std);
 
   /* Median. */
