@@ -20,10 +20,12 @@ static int teststructErr = 0;
 
 void DebugInit();
 struct DEBUG_TRACKER* GetPLOT();
+void CallBreathAnalysis(int* s, int32_t sample_length, uint8_t init);
+
 // uint8_t CalcBreathRate(float *rrs, uint16_t rrs_len, uint16_t fs);
-void BreathAnalysisInit();
+// void BreathAnalysisInit();
 // void BreathAnalysis(bioSignal_t* s, breath_result* result);
-void BreathAnalysis(int* s, uint32_t sample_length);
+// void BreathAnalysis(int* s, uint32_t sample_length);
 
 %extend struct DEBUG_TRACKER{
   // add a __getitem__ method to the structure to get values from the data array

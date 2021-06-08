@@ -41,3 +41,4 @@ extern struct DEBUG_TRACKER PLOT;
 
 void DebugInit();
 struct DEBUG_TRACKER* GetPLOT();
+void CallBreathAnalysis(int* s, int32_t sample_length, uint8_t init);

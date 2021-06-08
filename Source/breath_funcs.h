@@ -32,6 +32,7 @@ int CmpValue(const void *a, const void *b);
 int CmpIndex(const void *a, const void *b);
 int CmpFunc(const void* a, const void* b);
 value2index* GetV2I(void);
-void arm_var_f32(float * pSrc, uint32_t blockSize, float * pResult);
+// void breath_arm_var_f32(float * pSrc, uint32_t blockSize, float * pResult);
+float OnePassStd(const float x, uint8_t init);
 float* GetMem(void);
 float CoefVariation(uint8_t *data, uint32_t data_len);

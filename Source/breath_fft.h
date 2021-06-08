@@ -1,4 +1,6 @@
-#pragma once
+#ifndef _BREATH_FFT_H_
+#define _BREATH_FFT_H_
+
 #include <stdint.h>
 typedef float float32_t;
 
@@ -52,3 +54,5 @@ void arm_rfft_fast_f32(const arm_rfft_fast_instance_f32 * S,
                        float32_t * p,
                        float32_t * pOut,
                        uint8_t ifftFlag);
+
+#endif

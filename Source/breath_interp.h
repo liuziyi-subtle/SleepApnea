@@ -1,4 +1,6 @@
-#pragma once
+#ifndef _BREATH_INTERP_H_
+#define _BREATH_INTERP_H_
+
 #include <stdint.h>
 
 typedef float float32_t;
@@ -41,3 +43,4 @@ void arm_spline_f32(
     float32_t * pDst,
     uint32_t blockSize);
 
+#endif

@@ -8,23 +8,25 @@
 #include "breath.h"
 #include <math.h>
 #include "breath_find_peaks.h"
-#include "sleep_tracker.h"
 
 #if DEBUG
 #include "debug.h"
 #endif
 
 #define BREATH_PPG_FS             (25)
+#define BREATH_PPG_BUF_LEN        (BREATH_PPG_FS)  /*<< 1s buffer. */
 #define BREATH_NUM_BPF_STAGE      (2)
 #define BREATH_X_LEN              (128)
 #define BREATH_Y_LEN              (128)
-#define BREATH_MAX_RRS_LEN        (128)
-#define BREATH_PPG_BUF_LEN        (BREATH_PPG_FS)      /*<< 1s buffer. */
-#define BREATH_MAX_PV_LEN         (256)     /*<< (32 / 60) * 240BPM */
+#define BREATH_MAX_RRS_LEN        (128)            /*<< at most 128 (240 BPM) */
+#define BREATH_MIN_RRS_LEN        (22)             /*<< at least 22 (40 BPM)  */
+// #define BREATH_MAX_PV_LEN      (256)            /*<< (32 / 60) * 240 BPM   */
 #define BREATH_MAX_BREATH_LEN     (1440)
+#define BREATH_MAX_PEAKS_LEN      (256)            /*<< 32 * (240BPM / 60)    */
+#define BREATH_MIN_PEAKS_LEN      (22)             /*<< 32 * (40BPM / 60)     */
 #define BREATH_CALL_DURATION      (32 * BREATH_PPG_FS)
-#define BREATH_MAX_PEAKS_LEN      (256)     /*<< 32 * (240BPM / 60) */
-#define BREATH_MIN_DURATION       (180)
+#define BREATH_MIN_SLEEP_DURATION (180)            /*<< 3 hours */
+
 
 /* fs = 5Hz, 2-scale butter bandpass = [0.1, 0.4]. */
 static breath_arm_biquad_casd_df1_inst_f32 _filter;
@@ -58,10 +60,6 @@ static float32_t _ppg_buf[BREATH_PPG_BUF_LEN];  // 100 Bytes.
 static uint32_t _ppg_nfill;
 static uint32_t _ppg_counter;
 
-// static float32_t _rrs_x[BREATH_MAX_RRS_LEN];
-// static float32_t _rrs_y[BREATH_MAX_RRS_LEN];
-
-// #define BREATH_MAX_BREATH_LEN (1440)
 static uint8_t _breath_rate_buf[BREATH_MAX_BREATH_LEN];  // 200 Bytes
 static uint32_t _breath_rate_buf_len;
 
@@ -72,9 +70,10 @@ static uint32_t _last_ppg_counter;
 static int32_t _left_bases[BREATH_MAX_PEAKS_LEN];  // 512 Bytes
 static int32_t _right_bases[BREATH_MAX_PEAKS_LEN];  // 512 Bytes
 
+static uint32_t _sleep_counter;
 static uint8_t _last_breath_score;
 static uint8_t _last_breath_rate;
-static uint32_t _sleep_counter;
+static uint32_t _last_getupTimeUtc;
 
 /**
   @brief         Maximum value of absolute values of a Q31 vector.
@@ -84,16 +83,18 @@ static uint32_t _sleep_counter;
   @param[out]    pIndex     index of maximum value returned here
   @return        none
  */
-static uint8_t _CalcBreathRateRRS(float32_t *rrs_x, float32_t *rrs_y, uint32_t rrs_len, uint16_t fs)
+static uint8_t _CalcBreathRateRifv(float32_t *rrs_x, float32_t *rrs_y, uint32_t rrs_len, uint16_t fs)
 {
   uint32_t i;
 
+  printf("===========_CalcBreathRateRifv===========: rrs_len = %u\n", rrs_len);
+
   /* Check rrs_len. */
-  if (rrs_len == 0 || rrs_len > BREATH_MAX_RRS_LEN)
+  if (rrs_len < BREATH_MIN_RRS_LEN || rrs_len > BREATH_MAX_RRS_LEN)
   {
     return 0u;
   }
-
+  
   /* Allocate mem from _mem_pool. */
   float32_t *coef = GetMem();             /*<< get _mem_pool pointer. */
   uint32_t coef_len = 3 * (rrs_len - 1);  /*<< b, c, d has length (n - 1). */
@@ -165,36 +166,33 @@ static uint8_t _CalcBreathRateRRS(float32_t *rrs_x, float32_t *rrs_y, uint32_t r
   int32_t freq_index_3rd = v2i[len - 3].index;
 
   int32_t max_index;
-  if (freq_value_1st > 0.6 * freq_value_2nd)
+  if (freq_value_1st > 0.6f * freq_value_2nd)
   {
     max_index = freq_index_1st;
-    printf("1: max_index = %d\n", max_index);
+    // printf("1: max_index = %d\n", max_index);
   }
   else
   {
     if (freq_index_1st > 10)
     {
       max_index = freq_index_2nd;
-      printf("2: max_index = %d\n", max_index);
+      // printf("2: max_index = %d\n", max_index);
     }
     else
     {
       max_index = freq_index_1st;
-      printf("3: max_index = %d\n", max_index);
+      // printf("3: max_index = %d\n", max_index);
     }
   }
 
 
   float32_t breath_rate = ((float32_t)max_index * 4 / 128.0f * 60);
-  // printf("(float32_t)max_index: %f\n", (float32_t)max_index);
-  // printf("(float32_t)fs: %f\n", (float32_t)fs);
-  // printf("(float32_t)max_index * (float32_t)fs / 128.0f * 60: ", (float32_t)max_index * (float32_t)fs / 128.0f * 60);
 
 #if DEBUG
   // for (i = 0; i < welch_density_len; ++i) {
   //   PLOT.welch_density[PLOT.welch_density_len++] = welch_density[i];
   // }
-  printf("breath_rate: %f\n", breath_rate);
+  printf("max_index: %d, breath_rate: %f\n", max_index, breath_rate);
 #endif  
 
   return (uint8_t)(rand() % (10) + 90); // (uint8_t)breath_rate;
@@ -284,8 +282,16 @@ uint8_t CheckPeakQuality(float32_t *peaks, int32_t *peak_indices, int32_t peaks_
   @param[out]    pIndex     index of maximum value returned here
   @return        none
  */
-int32_t CalcRR(float32_t *peaks, int32_t *peak_indices, int32_t peaks_len, float32_t* rrs_x, float32_t *rrs_y)
+int32_t _CalcRR(float32_t *peaks, int32_t *peak_indices, int32_t peaks_len, float32_t* rrs_x, float32_t *rrs_y)
 {
+  /* Check peaks. */
+  if (peaks_len < BREATH_MIN_PEAKS_LEN || peaks_len > BREATH_MAX_PEAKS_LEN)
+  {
+    return 0;
+  }
+
+  printf("===========_CalcRR===========: peaks_len = %d\n", peaks_len);
+
   /* 计算标准差和中位数. */
   int32_t i, j;
   value2index *v2i = GetV2I();  /*<< Get pointer from breath_funcs.c. */
@@ -301,8 +307,11 @@ int32_t CalcRR(float32_t *peaks, int32_t *peak_indices, int32_t peaks_len, float
 
   /* Standard deviation. */
   float32_t std;
-  breath_arm_var_f32(rrs_y, peaks_len - 1, &std);
-  std = sqrtf(std);
+  OnePassStd(0, 1);
+  for (i = 0; i <  peaks_len - 1; ++i)
+  {
+    std = OnePassStd(rrs_y[i], 0);
+  }
 
   /* Median. */
   qsort(rrs_y, peaks_len - 1, sizeof(float32_t), CmpFunc);
@@ -324,10 +333,6 @@ int32_t CalcRR(float32_t *peaks, int32_t *peak_indices, int32_t peaks_len, float
     rrs_x[rrs_len] = v2i[rrs_len].index;
     rrs_y[rrs_len] = v2i[rrs_len].value;
     rrs_len++;
-    if (rrs_y[rrs_len - 1] < 0)
-    {
-      // printf("rrs_y[rrs_len - 1]: %f\n", rrs_y[rrs_len - 1]);
-    }
   }
 
   return rrs_len;
@@ -372,7 +377,7 @@ static uint8_t _CalcSleepBreathScore(uint8_t *breath_rate_buf, uint32_t breath_r
   @param[out]    pIndex     index of maximum value returned here
   @return        none
  */
-void BreathAnalysisInit()
+void BreathAnalysisInit(void)
 {
   uint32_t i;
 
@@ -401,6 +406,8 @@ void BreathAnalysisInit()
 
   _sleep_counter = 0;
 
+  _last_getupTimeUtc = 0;
+
 #if DEBUG
   DebugInit();
 #endif
@@ -417,7 +424,7 @@ void BreathAnalysisInit()
   @return        none
  */
 // void BreathAnalysis(int* s, int32_t sample_length)
-void BreathAnalysis(int* s, int32_t sample_length, breath_result* result)
+void BreathAnalysis(int* s, int32_t sample_length, breath_result* result, sleep_result *sl_result)
 {
   int32_t i;
 
@@ -425,22 +432,21 @@ void BreathAnalysis(int* s, int32_t sample_length, breath_result* result)
   result->breath_rate = BREATH_RATE_NONE;
 
   /* Check sleep result. */
-  LSSleepResult* sleep_result = GetSleepResult();  /*<< TODO: implement func. */
-  if (sleep_result->Terminator_t == T_NONE)
+  if (sl_result->completeCycleIndicator == SL_T_NONE)
   {
     /* Not in sleep. */
     return;
   }
-  else if (sleep_result->Terminator_t == T_COMP)
+  else if (sl_result->completeCycleIndicator == SL_T_COMP)
   {
     /* Sleep completed. */
     BreathAnalysisInit();
     return;
   }
-  else if (sleep_result->getupTimeUtc - sleep_result->sleepTimeUtc < BREATH_MIN_DURATION)
+  else if (sl_result->getupTimeUtc - sl_result->sleepTimeUtc < BREATH_MIN_SLEEP_DURATION)
   {
-      /* In sleep but not meeting the min duration requirement. */
-      return;
+    /* In sleep but not meeting the min duration requirement. */
+    return;
   }
 
   
@@ -457,52 +463,62 @@ void BreathAnalysis(int* s, int32_t sample_length, breath_result* result)
       _peaks_len = SelectByPeakDistance(_peaks, _peak_indices, _peaks_len, 6, _left_bases, _right_bases);
       // _peaks_len = SelectByPeakProminence(_peaks, _peaks_len, _peak_indices, _left_bases, _right_bases);
 
-      /* Starting from last ppg_counter. */
+      /* First index behind _last_ppg_counter. */
       int32_t start = 0;
       while (_peak_indices[start] < _last_ppg_counter) {
         start++;
       }
       _last_ppg_counter = _ppg_counter;
 
-
       /* Check peaks quality. */
-      uint8_t peak_quality = CheckPeakQuality(&_peaks[start], &_peak_indices[start], _peaks_len - start + 1);
+      uint8_t peak_quality = CheckPeakQuality(&_peaks[start], &_peak_indices[start], _peaks_len - start);
 
       /* RIAV, RIVF and RIIV. */
       float32_t x[BREATH_X_LEN] = {.0f};
       float32_t y[BREATH_Y_LEN] = {.0f};
       uint8_t breath_rate = 0u;
 
+      /* TODO:
+       * 1. RIFV, RIIV and RIAV features should be output from _CalcRR.
+       * 2. Use RR quality, instead of peak quality.
+       */
+      int32_t rrs_len = _CalcRR(&_peaks[start], &_peak_indices[start], _peaks_len - start, x, y);
+
+      
+      /* RIFV. */
+      uint8_t breath_rate_rifv = _CalcBreathRateRifv(x, y, rrs_len, BREATH_PPG_FS);
+      breath_rate += breath_rate_rifv;
+
       /* RIIV. */
-      int32_t rrs_len = CalcRR(&_peaks[start], &_peak_indices[start], _peaks_len - start + 1, x, y);
-      uint8_t breath_rate_rrs = _CalcBreathRateRRS(x, y, rrs_len, BREATH_PPG_FS);
-      breath_rate += breath_rate_rrs;
+      uint8_t breath_rate_riiv = breath_rate_rifv;
+      breath_rate += breath_rate_riiv;  /*<< TODO: replace and implement funcs. */
 
       /* RIAV. */
-      breath_rate += breath_rate_rrs;  /*<< TODO: replace and implement funcs. */
-
-      /* RIFV. */
-      breath_rate += breath_rate_rrs;  /*<< TODO: replace and implement funcs. */
+      uint8_t breath_rate_riav = breath_rate_rifv;
+      breath_rate += breath_rate_riav;  /*<< TODO: replace and implement funcs. */
 
       /* Check temporary awake. */
-      if (sleep_result->sleepTimeUtc == _last_sleepTimeUtc)
+      if (sl_result->getupTimeUtc == _last_getupTimeUtc)
       {
         /* Awake duration > 60 sec. */
         if (_sleep_counter > BREATH_PPG_FS * 64)
         {
+          // printf("return!\n");
           result->breath_score = _last_breath_score;
           result->breath_rate = _last_breath_rate;
           return;
         }
+        // printf("1: Not return!\n");
       }
       else
       {
+        // printf("2: Not return!\n");
         _sleep_counter = 0u;
       }
 
       uint8_t breath_score;
 
-      if (peak_quality)
+      if (peak_quality && breath_rate_rifv && breath_rate_riiv && breath_rate_riav)
       {
         /* Calculate breath rate. */
         breath_rate = (uint8_t)(breath_rate / 3.0f);
@@ -546,7 +562,7 @@ void BreathAnalysis(int* s, int32_t sample_length, breath_result* result)
     }
   }
   
-  _last_sleepTimeUtc = sleep_result->sleepTimeUtc;
+  _last_getupTimeUtc = sl_result->getupTimeUtc;
 
   result->breath_score = _last_breath_score;
   result->breath_rate = _last_breath_rate;

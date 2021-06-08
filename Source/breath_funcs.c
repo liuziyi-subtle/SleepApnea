@@ -61,6 +61,46 @@ float32_t Mean(const float32_t* data, uint32_t data_len) {
   return mean;
 }
 
+/**
+* 功能:动态计算标准差
+* 输入:顺序输入数组的单个数据样本
+* 输出:截止数组中该样本处的标准差
+*/
+float OnePassStd(const float x, uint8_t init) {
+    static double lastSum, lastSumSquare;
+    static int len;
+
+    if (init) {
+        lastSum       = .0;
+        lastSumSquare = .0;
+        len           =  0;
+        return .0;
+    }
+
+    double sum, sumSquare, mean, variance;
+
+    if (++len == 1) {
+        lastSum = (double) x;
+        lastSumSquare = pow((double)x, 2);
+        return .0;
+    }
+
+    sum = lastSum + (double) x;
+    sumSquare = lastSumSquare + pow((double) x, 2);
+    mean = sum / len;
+
+    variance = (sumSquare - len * pow(mean, 2)) / len;
+
+    lastSum = sum;
+    lastSumSquare = sumSquare;
+
+    if (variance == .0) {
+        return .0;
+    } else {
+        return (float) sqrt(variance);
+    }
+}
+
 void _SortFunc(float32_t* data, uint32_t data_length) {
   float32_t temp;
   uint32_t i, j;
@@ -163,142 +203,41 @@ struct bpv MakeBPV(uint8_t type, int pos, float val)
     return temp;
 }
 
-#ifndef __CC_ARM
-void breath_arm_var_f32(
-  float * pSrc,
-  uint32_t blockSize,
-  float * pResult)
-{
+// float32_t _Variance(const float32_t* data, uint16_t data_length,
+//                     uint16_t ddof) {
+//   uint16_t counter;    /*<< loop counter */
+//   double sum = 0.0; /*<< temporary result storage */
+//   double f_sum = 0.0;
+//   double f_mean, f_value;
+//   const float32_t* p_input = data;
 
-  float sum = 0.0f;                          /* Temporary result storage */
-  float sumOfSquares = 0.0f;                 /* Sum of squares */
-  float in;                                  /* input value */
-  uint32_t blkCnt;                               /* loop counter */
+//   if (data_length <= 1u) {
+//     return .0;
+//   }
 
-#ifndef ARM_MATH_CM0_FAMILY
-   
-  /* Run the below code for Cortex-M4 and Cortex-M3 */
+//   /* Initialize counter with number of samples */
+//   counter = data_length;
+//   while (counter > 0u) {
+//     sum += (double)*p_input++;
+//     counter--;
+//   }
 
-  float meanOfSquares, mean, squareOfMean;   /* Temporary variables */
+//   f_mean = sum / data_length;
 
-    if(blockSize == 1)
-    {
-        *pResult = 0;
-        return;
-    }
+//   p_input = data;
+//   counter = data_length;
+//   while (counter > 0u) {
+//     f_value = (double)*p_input++ - f_mean;
+//     f_sum += f_value * f_value;
 
-  if (blockSize == 0)
-  {
-    *pResult = 0;
-    return;
-  }
+//     counter--;
+//   }
 
-  /*loop Unrolling */
-  blkCnt = blockSize >> 2u;
+//   /* Variance */
+//   float32_t variance = (float32_t)(f_sum / (data_length - ddof));
 
-  /* First part of the processing with loop unrolling.  Compute 4 outputs at a time.    
-   ** a second loop below computes the remaining 1 to 3 samples. */
-  while(blkCnt > 0u)
-  {
-    /* C = (A[0] * A[0] + A[1] * A[1] + ... + A[blockSize-1] * A[blockSize-1])  */
-    /* Compute Sum of squares of the input samples    
-     * and then store the result in a temporary variable, sum. */
-    in = *pSrc++;
-    sum += in;
-    sumOfSquares += in * in;
-    in = *pSrc++;
-    sum += in;
-    sumOfSquares += in * in;
-    in = *pSrc++;
-    sum += in;
-    sumOfSquares += in * in;
-    in = *pSrc++;
-    sum += in;
-    sumOfSquares += in * in;
-
-    /* Decrement the loop counter */
-    blkCnt--;
-  }
-
-  /* If the blockSize is not a multiple of 4, compute any remaining output samples here.    
-   ** No loop unrolling is used. */
-  blkCnt = blockSize % 0x4u;
-
-  while(blkCnt > 0u)
-  {
-    /* C = (A[0] * A[0] + A[1] * A[1] + ... + A[blockSize-1] * A[blockSize-1]) */
-    /* Compute Sum of squares of the input samples    
-     * and then store the result in a temporary variable, sum. */
-    in = *pSrc++;
-    sum += in;
-    sumOfSquares += in * in;
-
-    /* Decrement the loop counter */
-    blkCnt--;
-  }
-
-  /* Compute Mean of squares of the input samples    
-   * and then store the result in a temporary variable, meanOfSquares. */
-  meanOfSquares = sumOfSquares / ((float) blockSize - 1.0f);
-
-  /* Compute mean of all input values */
-  mean = sum / (float) blockSize;
-
-  /* Compute square of mean */
-  squareOfMean = (mean * mean) * (((float) blockSize) /
-                                  ((float) blockSize - 1.0f));
-
-  /* Compute variance and then store the result to the destination */
-  *pResult = meanOfSquares - squareOfMean;
-
-#else
-
-  /* Run the below code for Cortex-M0 */
-  float squareOfSum;                         /* Square of Sum */
-
-    if(blockSize == 1)
-    {
-        *pResult = 0;
-        return;
-    }
-
-  if(blockSize == 0)
-  {
-    *pResult = 0;
-    return;
-  }
-
-  
-  /* Loop over blockSize number of values */
-  blkCnt = blockSize;
-
-  while(blkCnt > 0u)
-  {
-    /* C = (A[0] * A[0] + A[1] * A[1] + ... + A[blockSize-1] * A[blockSize-1]) */
-    /* Compute Sum of squares of the input samples     
-     * and then store the result in a temporary variable, sumOfSquares. */
-    in = *pSrc++;
-    sumOfSquares += in * in;
-
-    /* C = (A[0] + A[1] + ... + A[blockSize-1]) */
-    /* Compute Sum of the input samples     
-     * and then store the result in a temporary variable, sum. */
-    sum += in;
-
-    /* Decrement the loop counter */
-    blkCnt--;
-  }
-
-  /* Compute the square of sum */
-  squareOfSum = ((sum * sum) / (float) blockSize);
-
-  /* Compute the variance */
-  *pResult = ((sumOfSquares - squareOfSum) / (float) (blockSize - 1.0f));
-
-#endif /* #ifndef ARM_MATH_CM0_FAMILY */
-
-}
-#endif // __CC_ARM
+//   return variance;
+// }
 
 /* 默认排序过 */
 float Quantile(const float* data, uint32_t data_length, float q) {
@@ -312,13 +251,17 @@ float Quantile(const float* data, uint32_t data_length, float q) {
 
 float CoefVariation(uint8_t *data, uint32_t data_len)
 {
+  uint32_t i;
   /* STD and Mean. */
-  float32_t std;
-  breath_arm_var_f32(data, data_len, &std);
-  std = sqrtf(std);
+  float std;
+  OnePassStd(0, 1);
+  for (i = 0; i < data_len; ++i)
+  {
+    std = OnePassStd((float)data[i], 0);
+  }
 
   /* What if mean close to 0. */
-  float mean = Mean(data, data_len);
+  float mean = Mean((float *)data, data_len);
 
   float cv = std / mean;
 

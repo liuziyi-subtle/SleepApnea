@@ -90,25 +90,23 @@ if __name__ == "__main__":
         ppg_c = c2py.int_array(len(ppg))
         for i in range(len(ppg)):
             ppg_c[i] = int(ppg[i])
-        c2py.BreathAnalysisInit()
-        c2py.BreathAnalysis(ppg_c, len(ppg))
+        # c2py.BreathAnalysisInit()
+        # c2py.BreathAnalysis(ppg_c, len(ppg))
+        c2py.CallBreathAnalysis(ppg_c, len(ppg), 1)
+        c2py.CallBreathAnalysis(ppg_c, len(ppg), 0)
         debug_info = _get_c_debug_info()
 
-        peaks = np.array([])
-        for i in range(0, len(debug_info["ppg_f"]), 800):
-            segment_peaks = find_peaks(debug_info["ppg_f"][i:i+800], height=None, threshold=None, distance=6,
-                                       prominence=None, width=6, wlen=None, rel_height=0.5, plateau_size=None)
-            segment_peaks = segment_peaks[0].astype(np.int32)
-            # print("segment_peaks: ", segment_peaks + i)
-            peaks = np.r_[peaks, segment_peaks + i]
-            # print("peaks: ", peaks)
-        # peaks = find_peaks(debug_info["ppg_f"], height=None, threshold=None, distance=6,
-        #                    prominence=None, width=None, wlen=None, rel_height=0.5, plateau_size=None)[0].astype(np.int32)
-        # print("peaks: ", peaks,
-            #   'debug_info["peak_indices"]: ', debug_info["peak_indices"])
+        # peaks = np.array([])
+        # for i in range(0, len(debug_info["ppg_f"]), 800):
+        #     segment_peaks = find_peaks(debug_info["ppg_f"][i:i+800], height=None, threshold=None, distance=6,
+        #                                prominence=None, width=6, wlen=None, rel_height=0.5, plateau_size=None)
+        #     segment_peaks = segment_peaks[0].astype(np.int32)
+        #     # print("segment_peaks: ", segment_peaks + i)
+        #     peaks = np.r_[peaks, segment_peaks + i]
+        #     # print("peaks: ", peaks)
+        peaks = find_peaks(debug_info["ppg_f"], height=None, threshold=None, distance=6,
+                           prominence=None, width=6, wlen=None, rel_height=0.5, plateau_size=None)[0].astype(np.int32)
         peaks = peaks[peaks <= debug_info["peak_indices"][-1]].astype(np.int32)
-        # print('debug_info["peak_indices"][-1]: ',
-        #       debug_info["peak_indices"][-1])
 
         print(len(peaks), len(debug_info["peak_indices"]))
         for i in range(len(peaks)):

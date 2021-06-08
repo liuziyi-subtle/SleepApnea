@@ -1,4 +1,6 @@
-#pragma once
+#ifndef _BREATH_BIQUAD_FILTER_H_
+#define _BREATH_BIQUAD_FILTER_H_
+
 #include <stdint.h>
 typedef float float32_t;
 
@@ -23,3 +25,5 @@ void breath_arm_biquad_cascade_df1_f32(
     const float32_t * pSrc,
     float32_t * pDst,
     uint32_t blockSize);
+
+#endif
